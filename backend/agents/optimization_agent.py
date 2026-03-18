@@ -62,7 +62,7 @@ Return ONLY the optimized prompt and nothing else. No explanation.
                 f"# Constraints\n- Ensure accuracy.\n- Maintain high quality responses.\n\n"
                 f"# Output Format\nDefault structure and instructions."
             )
-            return fallback_prompt
+            return fallback_prompt, provider_used
 
         self.logger.info("Optimization complete.")
-        return optimized
+        return optimized, provider_used
