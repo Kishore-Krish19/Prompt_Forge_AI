@@ -1,0 +1,33 @@
+2026-03-18 14:36:40,172 - __main__ - INFO - --- Starting Verification ---
+2026-03-18 14:36:40,172 - __main__ - INFO - Testing Fallback starting with Groq
+2026-03-18 14:36:40,172 - llm.fallback_manager - INFO - Starting fallback chain. Initial Provider: groq
+2026-03-18 14:36:40,172 - llm.fallback_manager - INFO - Trying provider: groq
+2026-03-18 14:36:40,173 - llm.groq_llm - INFO - [Groq] API Key provided: gsk_...F4PM
+2026-03-18 14:36:40,726 - llm.groq_llm - INFO - [Groq] Request Payload: {'model': 'llama-3.3-70b-versatile', 'messages': [{'role': 'system', 'content': 'You are an expert prompt engineer.'}, {'role': 'user', 'content': 'Explain quantum computing in 1 sentence.'}], 'temperature': 0.3}
+2026-03-18 14:36:41,272 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-18 14:36:41,300 - llm.groq_llm - INFO - [Groq] Response received successfully.
+2026-03-18 14:36:41,300 - llm.fallback_manager - INFO - Provider succeeded: groq
+2026-03-18 14:36:41,300 - __main__ - INFO - Groq Success: {'provider_used': 'groq', 'response': 'Quantum computing is a revolutionary technology that uses the principles of quantum mechanics to perform calculations by manipulating quantum bits or qubits, which can exist in multiple states simultaneously, allowing for exponentially faster processing of complex information than classical computers.'}
+2026-03-18 14:36:41,300 - __main__ - INFO - Testing Fallback starting with Gemini
+2026-03-18 14:36:41,300 - llm.fallback_manager - INFO - Starting fallback chain. Initial Provider: gemini
+2026-03-18 14:36:41,300 - llm.fallback_manager - INFO - Trying provider: gemini
+2026-03-18 14:36:41,300 - llm.gemini_llm - INFO - [Gemini] API Key provided: AIza...6bRU
+2026-03-18 14:36:41,300 - llm.gemini_llm - INFO - [Gemini] Request Prompt: Explain quantum computing in 1 sentence.
+2026-03-18 14:36:46,415 - llm.gemini_llm - INFO - [Gemini] Response received successfully.
+2026-03-18 14:36:46,416 - llm.fallback_manager - INFO - Provider succeeded: gemini
+2026-03-18 14:36:46,416 - __main__ - INFO - Gemini Success: {'provider_used': 'gemini', 'response': 'Quantum computing leverages quantum phenomena like superposition and entanglement in qubits to perform calculations beyond the capabilities of classical computers.'}
+2026-03-18 14:36:46,416 - __main__ - INFO - Testing Fallback starting with OpenAI
+2026-03-18 14:36:46,416 - llm.fallback_manager - INFO - Starting fallback chain. Initial Provider: openai
+2026-03-18 14:36:46,416 - llm.fallback_manager - INFO - Trying provider: openai
+2026-03-18 14:36:46,416 - llm.openai_llm - INFO - [OpenAI] API Key provided: AIza...6bRU
+2026-03-18 14:36:46,812 - llm.openai_llm - INFO - [OpenAI] Request Payload: {'model': 'gpt-4o-mini', 'messages': [{'role': 'system', 'content': 'You are an expert prompt engineer.'}, {'role': 'user', 'content': 'Explain quantum computing in 1 sentence.'}]}
+2026-03-18 14:36:48,006 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2026-03-18 14:36:48,008 - llm.openai_llm - ERROR - [OpenAI] API Error: Error code: 401 - {'error': {'message': 'Incorrect API key provided: AIzaSyAp***************************6bRU. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+2026-03-18 14:36:48,008 - llm.fallback_manager - WARNING - Provider failed (openai): OpenAI API call failed: Error code: 401 - {'error': {'message': 'Incorrect API key provided: AIzaSyAp***************************6bRU. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+2026-03-18 14:36:48,008 - llm.fallback_manager - INFO - Trying provider: groq
+2026-03-18 14:36:48,008 - llm.groq_llm - INFO - [Groq] API Key provided: gsk_...F4PM
+2026-03-18 14:36:48,428 - llm.groq_llm - INFO - [Groq] Request Payload: {'model': 'llama-3.3-70b-versatile', 'messages': [{'role': 'system', 'content': 'You are an expert prompt engineer.'}, {'role': 'user', 'content': 'Explain quantum computing in 1 sentence.'}], 'temperature': 0.3}
+2026-03-18 14:36:48,744 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-18 14:36:48,746 - llm.groq_llm - INFO - [Groq] Response received successfully.
+2026-03-18 14:36:48,746 - llm.fallback_manager - INFO - Provider succeeded: groq
+2026-03-18 14:36:48,746 - __main__ - INFO - OpenAI Success (Fallback worked): {'provider_used': 'groq', 'response': 'Quantum computing is a revolutionary technology that uses the principles of quantum mechanics to perform calculations and operations on data by leveraging the unique properties of subatomic particles, such as superposition and entanglement, to process information exponentially faster and more efficiently than classical computers.'}
