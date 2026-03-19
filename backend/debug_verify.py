@@ -33,13 +33,14 @@ def verify_fallback():
     except Exception as e:
         logger.error(f"Gemini Fallback Failed: {e}")
 
-    # Test OpenAI (should fail and fall back to Groq or Gemini)
+    # Test Hugging Face (should fail if key invalid, but test the flow)
     try:
-        logger.info("Testing Fallback starting with OpenAI")
-        result = generate_with_fallback(prompt="Explain quantum computing in 1 sentence.", provider="openai")
-        logger.info(f"OpenAI Success (Fallback worked): {result}")
+        logger.info("Testing Fallback starting with Hugging Face")
+        result = generate_with_fallback(prompt="Explain quantum computing in 1 sentence.", provider="huggingface")
+        logger.info(f"Hugging Face Success (Fallback worked): {result}")
     except Exception as e:
-        logger.error(f"OpenAI Fallback Failed: {e}")
+        logger.error(f"Hugging Face Fallback Failed: {e}")
+
 
 if __name__ == "__main__":
     verify_fallback()

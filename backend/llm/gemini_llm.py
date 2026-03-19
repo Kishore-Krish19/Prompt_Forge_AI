@@ -20,16 +20,28 @@ class GeminiLLM(BaseLLM):
             # Update Model to gemini-2.5-flash
             self.model = genai.GenerativeModel("gemini-2.5-flash")
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, **kwargs) -> str:
         if not self.model:
             # Task 5: Skip provider with warning
             raise RuntimeError("Gemini API key is missing or invalid. Skipping provider.")
             
-        # Debug Logging: Request Payload
+        # Debug Logging: Request Prompt
         logger.info(f"[Gemini] Request Prompt: {prompt}")
         
+        # Build generation config if kwargs present
+        generation_config = {}
+        if "temperature" in kwargs:
+            generation_config["temperature"] = kwargs["temperature"]
+        if "top_p" in kwargs:
+            generation_config["top_p"] = kwargs["top_p"]
+            
         try:
-            response = self.model.generate_content(prompt)
+            # Pass generation_config if not empty
+            if generation_config:
+                response = self.model.generate_content(prompt, generation_config=generation_config)
+            else:
+                response = self.model.generate_content(prompt)
+
             logger.info("[Gemini] Response received successfully.")
             return response.text
         except Exception as e:

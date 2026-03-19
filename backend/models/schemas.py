@@ -57,7 +57,8 @@ class AnalyticsData(BaseModel):
 class ModelPerformance(BaseModel):
     groq: float
     gemini: float
-    openai: float
+    huggingface: float
+
 
 class AnalyticsResponse(BaseModel):
     prompt_improvement: AnalyticsData

@@ -3,7 +3,7 @@ import logging
 from dotenv import load_dotenv
 from groq import Groq
 import google.generativeai as genai
-from openai import OpenAI
+from huggingface_hub import InferenceClient
 
 # Setup logging to file
 logging.basicConfig(
@@ -57,30 +57,41 @@ def test_gemini():
     try:
         genai.configure(api_key=key)
         # Try gemini-1.5-flash
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content("Hello")
-        logger.info(f"Gemini Success with gemini-1.5-flash: {response.text[:50]}")
+        logger.info(f"Gemini Success with gemini-2.5-flash: {response.text[:50]}")
     except Exception as e:
-        logger.error(f"Gemini Failed with gemini-1.5-flash: {e}")
+        logger.error(f"Gemini Failed with gemini-2.5-flash: {e}")
         
     try:
         # Try gemini-pro
-        model = genai.GenerativeModel("gemini-pro")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content("Hello")
-        logger.info(f"Gemini Success with gemini-pro: {response.text[:50]}")
+        logger.info(f"Gemini Success with gemini-2.5-flash: {response.text[:50]}")
     except Exception as e:
-        logger.error(f"Gemini Failed with gemini-pro: {e}")
+        logger.error(f"Gemini Failed with gemini-2.5-flash: {e}")
 
-def test_openai():
-    logger.info("--- Testing OpenAI ---")
-    key = os.getenv("OPENAI_API_KEY")
-    if key:
-        logger.info(f"OPENAI_API_KEY: {key[:4]}...{key[-4:] if len(key) > 4 else ''}")
-    else:
-        logger.error("OPENAI_API_KEY is missing")
-    # We know it uses Gemini key, so it will fail 401. No need to test unless we want to see it.
+def test_huggingface():
+    logger.info("--- Testing Hugging Face ---")
+    key = os.getenv("HUGGINGFACE_API_KEY")
+    if not key:
+        logger.error("HUGGINGFACE_API_KEY is missing")
+        return
+        
+    logger.info(f"HUGGINGFACE_API_KEY: {key[:4]}...{key[-4:] if len(key) > 4 else ''}")
+    try:
+        client = InferenceClient(api_key=key)
+        # Using chat.completions.create API for compatibility Testing
+        response = client.chat.completions.create(
+            model="Qwen/Qwen3.5-35B-A3B",
+            messages=[{"role": "user", "content": "Hello"}],
+            max_tokens=64
+        )
+        logger.info(f"Hugging Face Success: {response.choices[0].message.content[:50]}")
+    except Exception as e:
+        logger.error(f"Hugging Face Failed: {e}")
 
 if __name__ == "__main__":
     test_groq()
     test_gemini()
-    test_openai()
+    test_huggingface()
