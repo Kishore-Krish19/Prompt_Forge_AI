@@ -21,8 +21,8 @@ export default function QuestionPanel({ questions = [], onGenerate, onBenchmark,
   };
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 border-purple-100 bg-gradient-to-b from-white to-purple-50/20 max-w-xl mx-auto animate-fade-in">
-      <div className="flex items-center gap-3 mb-5 border-b border-purple-100/50 pb-4">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 max-w-xl mx-auto animate-fade-in">
+      <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-4">
         <div className="bg-purple-100 p-2 rounded-lg text-purple-600">
           <HelpCircle size={20} />
         </div>
@@ -48,7 +48,7 @@ export default function QuestionPanel({ questions = [], onGenerate, onBenchmark,
               onChange={(e) => handleChange(q, e.target.value)}
               placeholder="Type your response..."
               disabled={isLoading}
-              className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 text-sm focus:ring-2 focus:ring-purple-100 focus:border-purple-300 outline-none transition-all disabled:opacity-60"
+              className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-100 focus:border-purple-300 outline-none transition-all disabled:opacity-60"
             />
           </div>
         ))}

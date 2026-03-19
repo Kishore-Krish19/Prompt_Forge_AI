@@ -71,7 +71,7 @@ export default function Dashboard() {
         <StatCard 
           icon={<Award size={20} />} 
           title="Best Model" 
-          value="OpenAI (GPT-4)" 
+          value="Hugging Face (Qwen)" 
           subValue="Avg score 9.2" 
           iconBg="bg-amber-50 text-amber-600"
         />
@@ -170,7 +170,7 @@ export default function Dashboard() {
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 <TableRow prompt="Build portfolio website" model="Groq" score={9} />
-                <TableRow prompt="Write AI tutorial blog" model="OpenAI" score={8} />
+                <TableRow prompt="Write AI tutorial blog" model="Hugging Face" score={8} />
                 <TableRow prompt="Startup pitch deck hooks" model="Gemini" score={9} />
                 <TableRow prompt="SQL Optimisation scripts" model="Groq" score={10} />
               </tbody>
@@ -199,7 +199,7 @@ const TableRow = ({ prompt, model, score }) => (
   <tr className="hover:bg-slate-50/50 transition-colors">
     <td className="p-3 truncate max-w-[200px] font-medium text-slate-800">{prompt}</td>
     <td className="p-3 text-center">
-      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${model === 'Groq' ? 'bg-orange-50 text-orange-700' : model === 'OpenAI' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>
+      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${model === 'Groq' ? 'bg-orange-50 text-orange-700' : model === 'Hugging Face' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>
         {model}
       </span>
     </td>

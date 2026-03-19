@@ -114,8 +114,8 @@ export default function App() {
                 className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-600 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 hover:border-slate-300 transition-colors cursor-pointer"
               >
                 <option value="groq">Groq (Llama 3)</option>
-                <option value="openai">OpenAI (GPT-4o)</option>
-                <option value="gemini">Gemini (1.5 Flash)</option>
+                <option value="huggingface">Hugging Face (Qwen)</option>
+                <option value="gemini">Gemini (2.5 Flash)</option>
               </select>
             </div>
           )}
