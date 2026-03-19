@@ -19,13 +19,13 @@ export default function PromptComparison({ original, optimized }) {
             Original Prompt
           </span>
         </div>
-        <div className="flex-1 text-slate-700 text-sm whitespace-pre-wrap bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+        <div className="flex-1 text-slate-700 text-sm whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-slate-100">
           {original || "No original prompt entered."}
         </div>
       </div>
 
       {/* Optimized Prompt */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 flex flex-col h-full border-purple-100 bg-gradient-to-br from-purple-50/20 to-white">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 flex flex-col h-full border-purple-100">
         <div className="flex items-center justify-between mb-3 pb-2 border-b border-purple-100">
           <span className="text-sm font-semibold text-purple-600 uppercase tracking-wider flex items-center gap-1">
             <ArrowRight size={14} className="text-purple-500" />
@@ -39,7 +39,7 @@ export default function PromptComparison({ original, optimized }) {
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
-        <div className="flex-1 text-slate-800 font-medium text-sm whitespace-pre-wrap bg-white/80 p-4 rounded-xl border border-purple-100/50 shadow-sm leading-relaxed">
+        <div className="flex-1 text-slate-800 font-medium text-sm whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-purple-100 shadow-sm leading-relaxed">
           {optimized || "Generating optimized prompt..."}
         </div>
       </div>
