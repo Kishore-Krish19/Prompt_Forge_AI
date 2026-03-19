@@ -1,8 +1,19 @@
 import React from 'react';
 import { Copy, Check, ArrowRight } from 'lucide-react';
 
-export default function PromptComparison({ original, optimized }) {
+export default function PromptComparison({ original, optimized, onOriginalChange }) {
   const [copied, setCopied] = React.useState(false);
+  const textareaRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (textareaRef.current) {
+      // Reset height to auto to get the correct scrollHeight measurement
+      textareaRef.current.style.height = 'auto';
+      // Set the height based on scroll height but at minimum reasonable size
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [original]);
+
 
   const handleCopy = () => {
     navigator.clipboard.writeText(optimized);
@@ -13,15 +24,19 @@ export default function PromptComparison({ original, optimized }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
       {/* Original Prompt */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 flex flex-col h-full">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 flex flex-col h-fit">
         <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
           <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
             Original Prompt
           </span>
         </div>
-        <div className="flex-1 text-slate-700 text-sm whitespace-pre-wrap bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-          {original || "No original prompt entered."}
-        </div>
+        <textarea
+          ref={textareaRef}
+          value={original || ""}
+          onChange={(e) => onOriginalChange && onOriginalChange(e.target.value)}
+          placeholder="Type or edit your original prompt here..."
+          className="w-full text-slate-700 text-sm bg-slate-50 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none transition-all placeholder:text-slate-400 min-h-[100px] overflow-hidden"
+        />
       </div>
 
       {/* Optimized Prompt */}

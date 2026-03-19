@@ -218,6 +218,7 @@ export default function App() {
                 <PromptComparison 
                   original={originalPrompt} 
                   optimized={optimizedPrompt} 
+                  onOriginalChange={setOriginalPrompt}
                 />
 
                 {/* Metrics & Recommendations grid */}
