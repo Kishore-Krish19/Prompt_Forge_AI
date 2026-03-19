@@ -109,9 +109,10 @@ def get_analytics():
     """
     return {
         "prompt_improvement": {"original": 54, "optimized": 88},
-        "model_performance": {"groq": 8.7, "gemini": 8.1, "openai": 9.2},
+        "model_performance": {"groq": 8.7, "gemini": 8.1, "huggingface": 9.2},
         "benchmark_results": {"prompt1": 8, "prompt2": 9, "prompt3": 7}
     }
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -3,12 +3,12 @@ from llm.llm_factory import get_llm
 
 logger = logging.getLogger(__name__)
 
-def generate_with_fallback(prompt: str, provider: str) -> dict:
+def generate_with_fallback(prompt: str, provider: str, **kwargs) -> dict:
     """
     Attempts to generate a response using the prioritizing provider, 
     falling back to remaining available nodes if failing providers raised streams.
     """
-    providers = [provider, "groq", "gemini", "openai"]
+    providers = [provider, "groq", "gemini", "huggingface"]
     
     # Remove duplicates while keeping ordering priority
     unique_providers = []
@@ -22,7 +22,7 @@ def generate_with_fallback(prompt: str, provider: str) -> dict:
         try:
             logger.info(f"Trying provider: {p}")
             llm = get_llm(p)
-            response = llm.generate(prompt)
+            response = llm.generate(prompt, **kwargs)
             logger.info(f"Provider succeeded: {p}")
             return {
                 "provider_used": p,

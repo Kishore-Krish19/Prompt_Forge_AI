@@ -19,7 +19,7 @@ class GroqLLM(BaseLLM):
             # Task 3: Use correct base URL (SDK default is correct)
             self.client = Groq(api_key=api_key)
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, **kwargs) -> str:
         if not self.client:
             # Task 5: Skip provider with warning
             raise RuntimeError("Groq API key is missing or invalid. Skipping provider.")
@@ -33,8 +33,12 @@ class GroqLLM(BaseLLM):
                 {"role": "system", "content": "You are an expert prompt engineer."},
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.3
+            "temperature": kwargs.get("temperature", 0.3)
         }
+        
+        if "top_p" in kwargs:
+            payload["top_p"] = kwargs["top_p"]
+
         
         # Debug Logging: Request Payload
         logger.info(f"[Groq] Request Payload: {payload}")
