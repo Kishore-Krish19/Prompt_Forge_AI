@@ -17,19 +17,40 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [originalPrompt, setOriginalPrompt] = React.useState('');
+  const safeParse = (key, fallback) => {
+    try {
+      const val = localStorage.getItem(key);
+      return val ? JSON.parse(val) : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const [originalPrompt, setOriginalPrompt] = React.useState(() => localStorage.getItem('pf__originalPrompt') || '');
   const [isLoading, setIsLoading] = React.useState(false);
 
   // API Responses State
-  const [questions, setQuestions] = React.useState([]);
-  const [optimizedPrompt, setOptimizedPrompt] = React.useState('');
-  const [promptScore, setPromptScore] = React.useState(0);
-  const [promptAnalysis, setPromptAnalysis] = React.useState(null);
-  const [suggestions, setSuggestions] = React.useState([]);
+  const [questions, setQuestions] = React.useState(() => safeParse('pf__questions', []));
+  const [optimizedPrompt, setOptimizedPrompt] = React.useState(() => localStorage.getItem('pf__optimizedPrompt') || '');
+  const [promptScore, setPromptScore] = React.useState(() => Number(localStorage.getItem('pf__promptScore')) || 0);
+  const [promptAnalysis, setPromptAnalysis] = React.useState(() => safeParse('pf__promptAnalysis', null));
+  const [suggestions, setSuggestions] = React.useState(() => safeParse('pf__suggestions', []));
   const [error, setError] = React.useState('');
-  const [selectedModel, setSelectedModel] = React.useState('groq');
-  const [providerUsed, setProviderUsed] = React.useState('');
-  const [benchmarkResults, setBenchmarkResults] = React.useState(null);
+  const [selectedModel, setSelectedModel] = React.useState(() => localStorage.getItem('pf__selectedModel') || 'groq');
+  const [providerUsed, setProviderUsed] = React.useState(() => localStorage.getItem('pf__providerUsed') || '');
+  const [benchmarkResults, setBenchmarkResults] = React.useState(() => safeParse('pf__benchmarkResults', null));
+
+  React.useEffect(() => {
+    localStorage.setItem('pf__originalPrompt', originalPrompt);
+    localStorage.setItem('pf__questions', JSON.stringify(questions));
+    localStorage.setItem('pf__optimizedPrompt', optimizedPrompt);
+    localStorage.setItem('pf__promptScore', promptScore);
+    localStorage.setItem('pf__promptAnalysis', JSON.stringify(promptAnalysis));
+    localStorage.setItem('pf__suggestions', JSON.stringify(suggestions));
+    localStorage.setItem('pf__selectedModel', selectedModel);
+    localStorage.setItem('pf__providerUsed', providerUsed);
+    localStorage.setItem('pf__benchmarkResults', JSON.stringify(benchmarkResults));
+  }, [originalPrompt, questions, optimizedPrompt, promptScore, promptAnalysis, suggestions, selectedModel, providerUsed, benchmarkResults]);
 
   const handleAnalyze = async (prompt) => {
     setIsLoading(true);
@@ -75,11 +96,19 @@ export default function App() {
     }
   };
 
-  const handleBenchmark = async (answers) => {
+  const handleBenchmark = async (answersFromState) => {
     setIsLoading(true);
     setError('');
     try {
-      const data = await benchmarkPrompt(originalPrompt, answers, selectedModel);
+      let actualAnswers = answersFromState;
+      if (!actualAnswers || Object.keys(actualAnswers).length === 0) {
+        try {
+          const saved = localStorage.getItem('pf__answers');
+          if (saved) actualAnswers = JSON.parse(saved);
+        } catch (e) {}
+      }
+
+      const data = await benchmarkPrompt(originalPrompt, actualAnswers || {}, selectedModel);
       setBenchmarkResults(data);
       setProviderUsed(data.provider_used || selectedModel);
       navigate('/benchmark');
@@ -210,7 +239,7 @@ export default function App() {
                     Start New Optimization
                   </button>
                   <button 
-                    onClick={() => handleBenchmark(location.state?.answers || {})}
+                    onClick={() => handleBenchmark(location.state?.answers)}
                     className="px-6 py-3 rounded-xl bg-slate-800 text-white hover:bg-slate-700 text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
                   >
                     <Play size={16} /> Run Benchmark

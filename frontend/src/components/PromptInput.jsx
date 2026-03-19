@@ -2,7 +2,11 @@ import React from 'react';
 import { Sparkles } from 'lucide-react';
 
 export default function PromptInput({ onSubmit, isLoading }) {
-  const [prompt, setPrompt] = React.useState('');
+  const [prompt, setPrompt] = React.useState(() => localStorage.getItem('pf__prompt') || '');
+
+  React.useEffect(() => {
+    localStorage.setItem('pf__prompt', prompt);
+  }, [prompt]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

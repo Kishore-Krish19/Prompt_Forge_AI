@@ -2,7 +2,18 @@ import React from 'react';
 import { HelpCircle, ChevronRight } from 'lucide-react';
 
 export default function QuestionPanel({ questions = [], onGenerate, onBenchmark, isLoading }) {
-  const [answers, setAnswers] = React.useState({});
+  const [answers, setAnswers] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('pf__answers');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('pf__answers', JSON.stringify(answers));
+  }, [answers]);
 
   const handleChange = (question, value) => {
     setAnswers(prev => ({ ...prev, [question]: value }));
