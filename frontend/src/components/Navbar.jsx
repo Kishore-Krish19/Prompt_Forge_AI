@@ -1,13 +1,10 @@
 import React from 'react';
 import { Sparkles, Github, BookOpen, Moon, Sun } from 'lucide-react';
+import { useTheme } from '../utils/ThemeContext';
 
 export default function Navbar({ activeTab = 'optimizer', onTabChange }) {
-  const [isDark, setIsDark] = React.useState(false);
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
-  };
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   return (
     <nav className="bg-white border-b border-slate-100 shadow-sm fixed top-0 w-full z-50">
