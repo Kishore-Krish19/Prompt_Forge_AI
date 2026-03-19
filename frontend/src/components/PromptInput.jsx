@@ -1,8 +1,62 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { Mic, Sparkles } from 'lucide-react';
+import useSpeechRecognition from '../hooks/useSpeechRecognition';
 
 export default function PromptInput({ onSubmit, isLoading }) {
   const [prompt, setPrompt] = React.useState('');
+  const committedPromptRef = React.useRef('');
+  const unsupportedMessage = 'Voice input is not supported in this browser.';
+
+  const mergeTranscript = React.useCallback((currentPrompt, transcript) => {
+    const cleanedTranscript = transcript.trim();
+
+    if (!cleanedTranscript) {
+      return currentPrompt;
+    }
+
+    if (!currentPrompt.trim()) {
+      return cleanedTranscript;
+    }
+
+    const needsSpace = !/\s$/.test(currentPrompt);
+    return `${currentPrompt}${needsSpace ? ' ' : ''}${cleanedTranscript}`;
+  }, []);
+
+  const handleFinalTranscript = React.useCallback((transcript) => {
+    const nextPrompt = mergeTranscript(committedPromptRef.current, transcript);
+
+    committedPromptRef.current = nextPrompt;
+    setPrompt(nextPrompt);
+  }, [mergeTranscript]);
+
+  const {
+    isSupported,
+    isListening,
+    interimTranscript,
+    error,
+    startListening,
+    stopListening,
+    clearError,
+    discardInterim,
+  } = useSpeechRecognition({
+    onTranscript: handleFinalTranscript,
+  });
+
+  React.useEffect(() => {
+    const nextPrompt = interimTranscript
+      ? mergeTranscript(committedPromptRef.current, interimTranscript)
+      : committedPromptRef.current;
+
+    setPrompt((currentPrompt) => (
+      currentPrompt === nextPrompt ? currentPrompt : nextPrompt
+    ));
+  }, [interimTranscript, mergeTranscript]);
+
+  React.useEffect(() => {
+    if (isLoading) {
+      stopListening();
+    }
+  }, [isLoading, stopListening]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -10,6 +64,40 @@ export default function PromptInput({ onSubmit, isLoading }) {
       onSubmit(prompt);
     }
   };
+
+  const handlePromptChange = (e) => {
+    const nextPrompt = e.target.value;
+
+    if (error) {
+      clearError();
+    }
+
+    if (interimTranscript) {
+      discardInterim();
+    }
+
+    committedPromptRef.current = nextPrompt;
+    setPrompt(nextPrompt);
+  };
+
+  const handleMicrophoneClick = () => {
+    if (isLoading) {
+      return;
+    }
+
+    if (error) {
+      clearError();
+    }
+
+    if (isListening) {
+      stopListening();
+      return;
+    }
+
+    startListening();
+  };
+
+  const voiceFeedback = error || (!isSupported ? unsupportedMessage : '');
 
   return (
     <div className="w-full">
@@ -26,20 +114,54 @@ export default function PromptInput({ onSubmit, isLoading }) {
         <div className="relative bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 pb-2 border-slate-200 focus-within:border-purple-300 focus-within:ring-2 focus-within:ring-purple-100 transition-all duration-200">
           <textarea
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={handlePromptChange}
             disabled={isLoading}
             placeholder="Example: Input a simple prompt like 'create a website for my portfolio'..."
             className="w-full h-32 p-3 bg-transparent text-slate-800 placeholder:text-slate-400 focus:outline-none resize-none"
           />
-          <div className="flex justify-end p-2 border-t border-slate-100 items-center">
+          <div className="flex justify-end p-2 border-t border-slate-100 items-center gap-3">
+            {isListening && (
+              <span
+                className="text-xs font-medium text-red-500 animate-pulse"
+                aria-live="polite"
+              >
+                Listening...
+              </span>
+            )}
             <span className="text-xs text-slate-400 mr-4">
               {prompt.length} characters
             </span>
+            <button
+              type="button"
+              onClick={handleMicrophoneClick}
+              disabled={isLoading || !isSupported}
+              aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+              aria-pressed={isListening}
+              title={isListening ? 'Stop voice input' : 'Start voice input'}
+              className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${
+                isListening
+                  ? 'border-red-200 bg-red-50 text-red-600'
+                  : error
+                    ? 'border-amber-200 bg-amber-50 text-amber-600'
+                    : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-purple-600'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <Mic size={16} />
+            </button>
           </div>
+          {voiceFeedback && (
+            <p
+              className={`px-2 pb-2 text-xs ${error ? 'text-amber-600' : 'text-slate-400'}`}
+              aria-live="polite"
+              role="status"
+            >
+              {voiceFeedback}
+            </p>
+          )}
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={!prompt.trim() || isLoading}
           className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-[1.02] shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
