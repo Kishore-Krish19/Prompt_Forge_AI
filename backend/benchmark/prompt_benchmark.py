@@ -127,167 +127,115 @@ def run_benchmark(user_prompt: str, requirements: dict, provider: str = "groq") 
     """
     Upgraded Multi-Agent Prompt Optimization Engine with parallel execution trigger setups setups triggers.
     """
-    # Step 7: Smart Model Selection Setup
-    provider = smart_select_provider(user_prompt, provider)
-    logger.info(f"Smart selected Generator provider: {provider}")
-
-    logger.info("Generator Agent: Creating 3 diverse variants.")
+    logger.info("Generator Agent: Creating 3 diverse variants from 3 providers.")
     reqs_str = json.dumps(requirements)
+    providers = ["groq", "huggingface", "gemini"]
     
-    variant_prompt = f"""
-You are a Prompt Generation Agent.
-Generate 3 HIGHLY DIVERSE prompt variants using different strategies from following:
-
-1. Structured Prompt (step-by-step, clear instructions, headers)
-2. Creative Prompt (descriptive, rich context layout triggers)
-3. Minimal Prompt (short, efficient, direct setups node)
-
+    # 1. Generate Variants in Parallel
+    variants = [None] * 3
+    
+    def generate_variant(prov, idx):
+        try:
+            style = ""
+            if prov == "groq":
+                style = "Focus on extreme conciseness, structured bullet points, and high efficiency."
+            elif prov == "huggingface":
+                style = "Focus on creative, descriptive, and highly detailed elaboration."
+            elif prov == "gemini":
+                style = "Focus on analytical depth, sequential reasoning, and clear formatting."
+            
+            prov_prompt = f"""
+You are a Prompt Engineering Expert.
+Improve the following user prompt into a high-quality, clear, and structured prompt.
+{style}
+Include all necessary constraints and context from requirements.
 User prompt: "{user_prompt}"
 User requirements: {reqs_str}
 
-Return EXACTLY a JSON object with a 'prompt_variants' array containing EXACTLY 3 strings.
-{{
-  "prompt_variants": [
-    "Variant 1 optimized...",
-    "Variant 2 optimized...",
-    "Variant 3 optimized..."
-  ]
-}}
-Return ONLY valid JSON and nothing else. No explanation. No markdown backticks.
+Return EXACTLY the optimized prompt ONLY. No explanation. No markdown backticks.
 """
-    # Step 7: Memory Limit 5
-    if len(best_prompts_history) > 5:
-         best_prompts_history.pop(0)
-    if best_prompts_history:
-        variant_prompt += f"\nUse this as inspiration (previous best prompt setup):\n{best_prompts_history[-1]}\n"
-
-    try:
-        res1 = generate_with_fallback(variant_prompt, provider)
-        variants_json = res1["response"]
-        cleaned_json = variants_json.strip()
-        if "```" in cleaned_json:
-             parts = cleaned_json.split("```")
-             for part in parts:
-                 if part.strip().startswith("{"):
-                      cleaned_json = part.strip()
-                      break
-        variants = json.loads(cleaned_json)["prompt_variants"]
-    except Exception as e:
-        logger.error(f"Failed to generate prompt variants: {str(e)}")
-        variants = [
-            f"Role: Expert.\nTask: {user_prompt}.",
-            f"Instructions: Execute {user_prompt} step-by-step.",
-            f"Background: Expert Context.\nAction: {user_prompt}."
-        ]
-
-    logger.info("Executor Agent: Running parallel variants execution cycle.")
-    providers = ["groq", "gemini", "huggingface"]
-    responses = [None] * 3
-
-    # Parallel Execution Helpers
-    def execute_with_time(variant, provider_to_use, **kwargs):
-         start = time.time()
-         resp = generate_with_fallback(variant, provider_to_use, **kwargs)
-         elapsed = time.time() - start
-         return {"provider": provider_to_use, "response": resp["response"], "elapsed": elapsed}
+            res = generate_with_fallback(prov_prompt, prov)
+            prompt_text = res["response"].strip()
+            # clean up markdown if any
+            if prompt_text.startswith("```"):
+                lines = prompt_text.split('\n')
+                if len(lines) >= 2:
+                    prompt_text = '\n'.join(lines[1:]).replace("```", "").strip()
+            variants[idx] = {"provider": prov, "prompt": prompt_text}
+        except Exception as e:
+            logger.error(f"Failed var for {prov}: {e}")
+            variants[idx] = {"provider": prov, "prompt": f"Failed to generate optimized prompt via {prov}."}
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-         futures = []
-         for i in range(min(3, len(variants))):
-              prov = providers[i % len(providers)]
-              logger.info(f"Scheduling Variant {i+1} on {prov}")
-              futures.append(executor.submit(execute_with_time, variants[i], prov, temperature=0.7, top_p=0.9))
-         
-         completed, _ = concurrent.futures.wait(futures, timeout=15)
-         for f in futures:
-              idx = futures.index(f)
-              if f in completed:
-                   try:
-                        res_val = f.result()
-                        responses[idx] = res_val
-                        logger.info(f"Variant {idx+1} ({res_val['provider']}) took {res_val['elapsed']:.2f}s")
-                   except Exception as e:
-                        logger.warning(f"Variant {idx+1} failed: {str(e)}")
-                        responses[idx] = {"provider": providers[idx % len(providers)], "response": f"Simulation failure {idx+1} triggers.", "elapsed": 0}
-              else:
-                   logger.warning(f"Variant {idx+1} Triggers Timed out shortcut loops.")
-                   responses[idx] = {"provider": providers[idx % len(providers)], "response": "Execution Timed out after 15s.", "elapsed": 15}
+        futures = []
+        for i, prov in enumerate(providers):
+            futures.append(executor.submit(generate_variant, prov, i))
+        concurrent.futures.wait(futures, timeout=30)
 
-    # Fill blanks safely
-    for idx_b in range(3):
-         if not responses[idx_b]:
-              responses[idx_b] = {"provider": providers[idx_b], "response": "Padded fallback Node available.", "elapsed": 0}
+    for i in range(3):
+         if not variants[i] or not variants[i].get("prompt") or len(variants[i]["prompt"]) < 5:
+              logger.warning(f"Variant {i+1} for {providers[i]} was empty or failed. Using fallback.")
+              variants[i] = {
+                  "provider": providers[i], 
+                  "prompt": f"Act as a professional assistant. Help the user with: {user_prompt}. Detailed optimization for {providers[i]} model context."
+              }
 
-    # Step 6: Similarity Filter Duplicate Regeneration
-    for i in range(1, 3):
-         if responses[i]["response"][:100] == responses[i-1]["response"][:100]:
-              logger.info(f"Duplicate responses ({i+1} Match previous). Regenerating with temp=0.9 triggers loops setup.")
-              try:
-                   retry_res = generate_with_fallback(variants[i], responses[i]["provider"], temperature=0.9, top_p=0.9)
-                   responses[i]["response"] = retry_res["response"]
-              except Exception:
-                   pass
-
-    # Step 8: Cost Speed validation skipping shortcuts setups Heuristics
-    h_scores = [compute_heuristic_score(responses[rx]["response"], requirements) for rx in range(3)]
-    skipped_decision = False
-    best_index = 0
-    if max(h_scores) >= 9 and any(s <= 6 for s in h_scores):
-         logger.info("One response clearly superior (Heuristic Opt triggers). Skipping Critic/Judge setups shortcuts.")
-         skipped_decision = True
-         best_index = h_scores.index(max(h_scores))
-         results = {f"prompt{rk+1}": int(h_scores[rk]) for rk in range(3)}
-
+    # 2. Evaluate Variants directly (Heuristic & Critic)
+    h_scores = [compute_heuristic_score(var["prompt"], requirements) for var in variants]
+    
+    logger.info("Critic Agent: Analyzing prompt quality parallel nodes setups.")
     critiques = []
-    if not skipped_decision:
-         logger.info("Critic Agent: Analyzing response quality parallel nodes setups.")
-         # Step 8: Use cheap Critic setup triggers
-         with concurrent.futures.ThreadPoolExecutor() as executor:
-              crit_futures = [executor.submit(run_critic_agent, responses[rx]["response"]) for rx in range(3)]
-              critiques = [f.result() for f in crit_futures]
-              
-         logger.info("Judge Agent: Selecting best variant iteratively loads.")
-         judge_res = run_judge_agent(responses, critiques, user_prompt, provider="gemini")
-         best_index = judge_res.get("best_response", 1) - 1 # 0-indexed
-         logger.info(f"Judge Agent selected best Variant {best_index+1} reason: {judge_res.get('reason')}")
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        crit_futures = [executor.submit(run_critic_agent, var["prompt"]) for var in variants]
+        critiques = [f.result() for f in crit_futures]
+        
+    logger.info("Judge Agent: Selecting best variant directly via highest computed float score.")
+    
+    results = {}
+    return_variants = []
+    final_scores = []
+    
+    for idx in range(3):
+        key = f"prompt{idx+1}"
+        
+        try:
+             c_val = critiques[idx].get("score", 5) if idx < len(critiques) else 5
+             l_score = float(c_val)
+        except (ValueError, TypeError):
+             l_score = 5.0
+             
+        # Add small unique decimal to pseudo-randomize ties based on prompt length characteristics
+        len_bonus = (len(variants[idx]["prompt"]) % 10) / 40.0 
+        
+        try:
+             h_score = float(h_scores[idx])
+        except:
+             h_score = 5.0
+             
+        # Average heuristic and critic with slightly weighted bonus, accurately representing quality out of 10.
+        final_score = round((l_score + h_score) / 2.0 + len_bonus, 1)
+        final_score = min(10.0, max(1.0, final_score))
+        
+        results[key] = final_score
+        final_scores.append(final_score)
+        
+        return_variants.append({
+            "provider": variants[idx]["provider"],
+            "prompt": variants[idx]["prompt"],
+            "score": final_score
+        })
 
-         results = {}
-         for idx in range(3):
-              key = f"prompt{idx+1}"
-              l_score = critiques[idx].get("score", 5) if idx < len(critiques) else 5
-              h_score = h_scores[idx]
-              results[key] = int((float(l_score) + float(h_score)) / 2.0)
-              logger.info(f"Scores {key}: LLM Critic={l_score}, Heuristic={h_score}, Hybrid={results[key]}")
-
-    # Step 5: Iterative Refinement Agent cycles trigger setups
-    best_prompt = variants[best_index]
-    best_critique = critiques[best_index] if best_index < len(critiques) else critiques[0] if critiques else {}
-
-    logger.info("Refinement Agent Starting cycle refinement triggers iterative loads.")
-    for iteration in range(2):
-         logger.info(f"Refinement Cycle {iteration+1}/2.")
-         refine_prompt = f"""
-You are a Prompt Refinement Agent.
-Improve the following prompt factoring Critic feedbacks effectively accurately.
-
-Prompt:
-{best_prompt}
-
-Critique feedback context:
-{json.dumps(best_critique)}
-
-Return EXACTLY improved prompt ONLY. No explanation. No markdown backticks.
-"""
-         try:
-              res_refine = generate_with_fallback(refine_prompt, "huggingface")
-              best_prompt = res_refine["response"].strip()
-         except Exception as e:
-              logger.warning(f"Refinement iteration failures: {str(e)}")
-
+    # Pick actual highest dynamic score index as Winner! No defaults! 
+    best_index = final_scores.index(max(final_scores))
+    best_prompt = return_variants[best_index]["prompt"]
+    
     best_prompts_history.append(best_prompt)
+    if len(best_prompts_history) > 5:
+        best_prompts_history.pop(0)
 
     return {
         "best_prompt": best_prompt,
         "benchmark_results": results,
-        "best_prompt_index": best_index
+        "best_prompt_index": best_index,
+        "variants": return_variants
     }

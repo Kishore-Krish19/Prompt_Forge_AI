@@ -34,7 +34,7 @@ class ScoreAnalysis(BaseModel):
     output_format: int
 
 class ScoreResponse(BaseModel):
-    score: int
+    score: float
     analysis: ScoreAnalysis
     suggestions: List[str]
     provider_used: str = "groq"
@@ -45,10 +45,16 @@ class BenchmarkRequest(BaseModel):
     requirements: Dict[str, str]
     model: str = "groq"
 
+class Variant(BaseModel):
+    provider: str
+    prompt: str
+    score: float
+
 class BenchmarkResponse(BaseModel):
     best_prompt: str
-    benchmark_results: Dict[str, int]
+    benchmark_results: Dict[str, float]
     best_prompt_index: int
+    variants: List[Variant] = []
 
 class AnalyticsData(BaseModel):
     original: int
@@ -63,4 +69,4 @@ class ModelPerformance(BaseModel):
 class AnalyticsResponse(BaseModel):
     prompt_improvement: AnalyticsData
     model_performance: ModelPerformance
-    benchmark_results: Dict[str, int]
+    benchmark_results: Dict[str, float]
