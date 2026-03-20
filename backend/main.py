@@ -1,7 +1,11 @@
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
 # Models
 from models.schemas import (
     AnalyzeRequest, AnalyzeResponse,
@@ -13,6 +17,9 @@ from models.schemas import (
 # Services / Orchestration
 from services.agent_orchestrator import AgentOrchestrator
 from benchmark.prompt_benchmark import run_benchmark
+
+
+
 
 app = FastAPI(title="PromptForge AI Multi-Agent Backend", version="1.1.0")
 
@@ -113,6 +120,14 @@ def get_analytics():
         "benchmark_results": {"prompt1": 8, "prompt2": 9, "prompt3": 7}
     }
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
+# if __name__ == "__main__":
+#     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
