@@ -5,14 +5,17 @@ import useSpeechRecognition from '../hooks/useSpeechRecognition';
 export default function PromptInput({ onSubmit, isLoading }) {
   const [prompt, setPrompt] = React.useState('');
   const committedPromptRef = React.useRef('');
+  const textareaRef = React.useRef(null);
   const unsupportedMessage = 'Voice input is not supported in this browser.';
 
   const mergeTranscript = React.useCallback((currentPrompt, transcript) => {
-    const cleanedTranscript = transcript.trim();
+    let cleanedTranscript = transcript.trim();
 
     if (!cleanedTranscript) {
       return currentPrompt;
     }
+
+    cleanedTranscript = cleanedTranscript.charAt(0).toUpperCase() + cleanedTranscript.slice(1);
 
     if (!currentPrompt.trim()) {
       return cleanedTranscript;
@@ -94,6 +97,9 @@ export default function PromptInput({ onSubmit, isLoading }) {
       return;
     }
 
+    if (textareaRef.current) {
+      textareaRef.current.blur();
+    }
     startListening();
   };
 
@@ -113,6 +119,7 @@ export default function PromptInput({ onSubmit, isLoading }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 pb-2 border-slate-200 focus-within:border-purple-300 focus-within:ring-2 focus-within:ring-purple-100 transition-all duration-200">
           <textarea
+            ref={textareaRef}
             value={prompt}
             onChange={handlePromptChange}
             disabled={isLoading}

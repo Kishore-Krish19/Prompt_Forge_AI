@@ -46,6 +46,7 @@ export default function useSpeechRecognition({ onTranscript, lang } = {}) {
   const interimTranscriptRef = useRef('');
   const discardedInterimRef = useRef('');
   const lastFinalTranscriptRef = useRef('');
+  const silenceTimeoutRef = useRef(null);
 
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -59,6 +60,29 @@ export default function useSpeechRecognition({ onTranscript, lang } = {}) {
       currentTranscript === nextTranscript ? currentTranscript : nextTranscript
     ));
   }, []);
+
+  const stopListening = useCallback(() => {
+    manualStopRef.current = true;
+
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+    }
+
+    if (!recognitionRef.current) {
+      updateInterimTranscript('');
+      setIsListening(false);
+      manualStopRef.current = false;
+      return;
+    }
+
+    try {
+      recognitionRef.current.stop();
+    } catch {
+      updateInterimTranscript('');
+      setIsListening(false);
+      manualStopRef.current = false;
+    }
+  }, [updateInterimTranscript]);
 
   useEffect(() => {
     transcriptHandlerRef.current = onTranscript;
@@ -85,10 +109,19 @@ export default function useSpeechRecognition({ onTranscript, lang } = {}) {
     }
 
     const recognition = new RecognitionConstructor();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.lang = lang || getDefaultLanguage();
+
+    const resetSilenceTimeout = () => {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+      silenceTimeoutRef.current = setTimeout(() => {
+        stopListening();
+      }, 5000);
+    };
 
     recognition.onstart = () => {
       if (isDisposedRef.current) {
@@ -98,9 +131,11 @@ export default function useSpeechRecognition({ onTranscript, lang } = {}) {
       manualStopRef.current = false;
       lastFinalTranscriptRef.current = '';
       setIsListening(true);
+      resetSilenceTimeout();
     };
 
     recognition.onresult = (event) => {
+      resetSilenceTimeout();
       if (isDisposedRef.current) {
         return;
       }
@@ -146,6 +181,10 @@ export default function useSpeechRecognition({ onTranscript, lang } = {}) {
     };
 
     recognition.onerror = (event) => {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+
       if (isDisposedRef.current) {
         return;
       }
@@ -163,6 +202,10 @@ export default function useSpeechRecognition({ onTranscript, lang } = {}) {
     };
 
     recognition.onend = () => {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+
       if (isDisposedRef.current) {
         return;
       }
@@ -175,6 +218,10 @@ export default function useSpeechRecognition({ onTranscript, lang } = {}) {
     recognitionRef.current = recognition;
 
     return () => {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+
       manualStopRef.current = true;
       discardedInterimRef.current = '';
       lastFinalTranscriptRef.current = '';
@@ -195,7 +242,7 @@ export default function useSpeechRecognition({ onTranscript, lang } = {}) {
 
       recognitionRef.current = null;
     };
-  }, [isSupported, lang, updateInterimTranscript]);
+  }, [isSupported, lang, updateInterimTranscript, stopListening]);
 
   const clearError = useCallback(() => {
     if (isDisposedRef.current) {
@@ -243,25 +290,6 @@ export default function useSpeechRecognition({ onTranscript, lang } = {}) {
       setIsListening(false);
     }
   }, [isListening, isSupported, updateInterimTranscript]);
-
-  const stopListening = useCallback(() => {
-    manualStopRef.current = true;
-
-    if (!recognitionRef.current) {
-      updateInterimTranscript('');
-      setIsListening(false);
-      manualStopRef.current = false;
-      return;
-    }
-
-    try {
-      recognitionRef.current.stop();
-    } catch {
-      updateInterimTranscript('');
-      setIsListening(false);
-      manualStopRef.current = false;
-    }
-  }, [updateInterimTranscript]);
 
   return {
     isSupported,
