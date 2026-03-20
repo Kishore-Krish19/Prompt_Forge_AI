@@ -37,16 +37,6 @@ export default function PromptComparison({ original, optimized, onOriginalChange
           placeholder="Type or edit your original prompt here..."
           className="w-full text-slate-700 text-sm bg-slate-50 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none transition-all placeholder:text-slate-400 min-h-[100px] overflow-hidden"
         />
-
-        {/* Preview box */}
-        <div className="mt-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Preview
-          </p>
-          <div className="flex-1 text-slate-700 text-sm whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-slate-100 min-h-[100px]">
-            {original || "No original prompt entered."}
-          </div>
-        </div>
       </div>
 
       {/* Optimized Prompt */}

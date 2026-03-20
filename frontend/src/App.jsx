@@ -8,9 +8,11 @@ import PromptComparison from './components/PromptComparison';
 import PromptScoreCard from './components/PromptScoreCard';
 import SuggestionList from './components/SuggestionList';
 import Dashboard from './pages/Dashboard';
+import BenchmarkPage from './pages/BenchmarkPage';
 
 // API Utilities
-import { analyzePrompt, optimizePrompt, scorePrompt, benchmarkPrompt } from './utils/api';
+import { analyzePrompt, optimizePrompt, scorePrompt } from './utils/api';
+import { memoryStorage } from './utils/memoryStore';
 
 export default function App() {
   const [activeTab, setActiveTab] = React.useState('optimizer');
@@ -19,37 +21,37 @@ export default function App() {
 
   const safeParse = (key, fallback) => {
     try {
-      const val = localStorage.getItem(key);
+      const val = memoryStorage.getItem(key);
       return val ? JSON.parse(val) : fallback;
     } catch {
       return fallback;
     }
   };
 
-  const [originalPrompt, setOriginalPrompt] = React.useState(() => localStorage.getItem('pf__originalPrompt') || '');
+  const [originalPrompt, setOriginalPrompt] = React.useState(() => memoryStorage.getItem('pf__originalPrompt') || '');
   const [isLoading, setIsLoading] = React.useState(false);
 
   // API Responses State
   const [questions, setQuestions] = React.useState(() => safeParse('pf__questions', []));
-  const [optimizedPrompt, setOptimizedPrompt] = React.useState(() => localStorage.getItem('pf__optimizedPrompt') || '');
-  const [promptScore, setPromptScore] = React.useState(() => Number(localStorage.getItem('pf__promptScore')) || 0);
+  const [optimizedPrompt, setOptimizedPrompt] = React.useState(() => memoryStorage.getItem('pf__optimizedPrompt') || '');
+  const [promptScore, setPromptScore] = React.useState(() => Number(memoryStorage.getItem('pf__promptScore')) || 0);
   const [promptAnalysis, setPromptAnalysis] = React.useState(() => safeParse('pf__promptAnalysis', null));
   const [suggestions, setSuggestions] = React.useState(() => safeParse('pf__suggestions', []));
   const [error, setError] = React.useState('');
-  const [selectedModel, setSelectedModel] = React.useState(() => localStorage.getItem('pf__selectedModel') || 'groq');
-  const [providerUsed, setProviderUsed] = React.useState(() => localStorage.getItem('pf__providerUsed') || '');
+  const [selectedModel, setSelectedModel] = React.useState(() => memoryStorage.getItem('pf__selectedModel') || 'groq');
+  const [providerUsed, setProviderUsed] = React.useState(() => memoryStorage.getItem('pf__providerUsed') || '');
   const [benchmarkResults, setBenchmarkResults] = React.useState(() => safeParse('pf__benchmarkResults', null));
 
   React.useEffect(() => {
-    localStorage.setItem('pf__originalPrompt', originalPrompt);
-    localStorage.setItem('pf__questions', JSON.stringify(questions));
-    localStorage.setItem('pf__optimizedPrompt', optimizedPrompt);
-    localStorage.setItem('pf__promptScore', promptScore);
-    localStorage.setItem('pf__promptAnalysis', JSON.stringify(promptAnalysis));
-    localStorage.setItem('pf__suggestions', JSON.stringify(suggestions));
-    localStorage.setItem('pf__selectedModel', selectedModel);
-    localStorage.setItem('pf__providerUsed', providerUsed);
-    localStorage.setItem('pf__benchmarkResults', JSON.stringify(benchmarkResults));
+    memoryStorage.setItem('pf__originalPrompt', originalPrompt);
+    memoryStorage.setItem('pf__questions', JSON.stringify(questions));
+    memoryStorage.setItem('pf__optimizedPrompt', optimizedPrompt);
+    memoryStorage.setItem('pf__promptScore', promptScore);
+    memoryStorage.setItem('pf__promptAnalysis', JSON.stringify(promptAnalysis));
+    memoryStorage.setItem('pf__suggestions', JSON.stringify(suggestions));
+    memoryStorage.setItem('pf__selectedModel', selectedModel);
+    memoryStorage.setItem('pf__providerUsed', providerUsed);
+    memoryStorage.setItem('pf__benchmarkResults', JSON.stringify(benchmarkResults));
   }, [originalPrompt, questions, optimizedPrompt, promptScore, promptAnalysis, suggestions, selectedModel, providerUsed, benchmarkResults]);
 
   const handleAnalyze = async (prompt) => {
@@ -96,28 +98,8 @@ export default function App() {
     }
   };
 
-  const handleBenchmark = async (answersFromState) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      let actualAnswers = answersFromState;
-      if (!actualAnswers || Object.keys(actualAnswers).length === 0) {
-        try {
-          const saved = localStorage.getItem('pf__answers');
-          if (saved) actualAnswers = JSON.parse(saved);
-        } catch (e) {}
-      }
-
-      const data = await benchmarkPrompt(originalPrompt, actualAnswers || {}, selectedModel);
-      setBenchmarkResults(data);
-      setProviderUsed(data.provider_used || selectedModel);
-      navigate('/benchmark');
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Benchmark failed.');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleBenchmark = (answersFromState) => {
+    navigate('/benchmark', { state: { answers: answersFromState, runBenchmark: true } });
   };
 
   return (
@@ -250,59 +232,14 @@ export default function App() {
             } />
 
             <Route path="/benchmark" element={
-              benchmarkResults ? (
-                <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
-                  <div className="text-center">
-                    <h2 className="text-3xl font-extrabold text-slate-900">Benchmark Complete!</h2>
-                    <p className="mt-1 text-slate-500">We tested multiple variants and scored the responses.</p>
-                  </div>
-
-                  {/* Best Prompt Card */}
-                  <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6">
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-3">
-                      <span className="bg-green-100 text-green-700 p-1.5 rounded-lg text-xs">Best</span>
-                      Optimized Prompt Variant
-                    </h3>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-mono whitespace-pre-wrap max-h-60 overflow-y-auto">
-                      {benchmarkResults.best_prompt}
-                    </div>
-                    <button 
-                      onClick={() => navigator.clipboard.writeText(benchmarkResults.best_prompt)}
-                      className="mt-4 w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium px-4 py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm"
-                    >
-                      Copy Best Prompt
-                    </button>
-                  </div>
-
-                  {/* Grid Scores */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {Object.entries(benchmarkResults.benchmark_results).map(([key, score], i) => {
-                       const isBest = i === benchmarkResults.best_prompt_index;
-                       return (
-                          <div key={key} className={`p-4 rounded-xl border ${isBest ? 'border-green-200 bg-green-50/30' : 'border-slate-100 bg-white'} shadow-sm text-center`}>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Variant {i+1}</p>
-                            <p className="text-3xl font-extrabold text-slate-800 mt-1">{score}<span className="text-sm text-slate-400">/10</span></p>
-                            {isBest && <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full mt-2 inline-block font-medium">Winner</span>}
-                          </div>
-                       );
-                    })}
-                  </div>
-
-                  <div className="flex justify-center mt-6">
-                    <button 
-                      onClick={() => navigate('/results')}
-                      className="text-sm font-medium text-slate-600 hover:text-slate-800 flex items-center gap-2"
-                    >
-                      <ArrowLeft size={16} /> Back to Results
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-10">
-                  <p className="text-slate-500">No benchmark data available. Generate a prompt first.</p>
-                  <button onClick={() => navigate('/')} className="mt-4 text-purple-600 hover:underline">Go Home</button>
-                </div>
-              )
+              <BenchmarkPage 
+                originalPrompt={originalPrompt}
+                selectedModel={selectedModel}
+                benchmarkResults={benchmarkResults}
+                setBenchmarkResults={setBenchmarkResults}
+                providerUsed={providerUsed}
+                setProviderUsed={setProviderUsed}
+              />
             } />
           </Routes>
         </div>

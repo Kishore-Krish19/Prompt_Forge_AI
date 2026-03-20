@@ -1,10 +1,11 @@
 import React from 'react';
 import { HelpCircle, ChevronRight } from 'lucide-react';
+import { memoryStorage } from '../utils/memoryStore';
 
 export default function QuestionPanel({ questions = [], onGenerate, onBenchmark, isLoading }) {
   const [answers, setAnswers] = React.useState(() => {
     try {
-      const saved = localStorage.getItem('pf__answers');
+      const saved = memoryStorage.getItem('pf__answers');
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -12,7 +13,7 @@ export default function QuestionPanel({ questions = [], onGenerate, onBenchmark,
   });
 
   React.useEffect(() => {
-    localStorage.setItem('pf__answers', JSON.stringify(answers));
+    memoryStorage.setItem('pf__answers', JSON.stringify(answers));
   }, [answers]);
 
   const handleChange = (question, value) => {

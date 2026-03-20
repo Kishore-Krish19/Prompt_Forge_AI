@@ -1,11 +1,12 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
+import { memoryStorage } from '../utils/memoryStore';
 
 export default function PromptInput({ onSubmit, isLoading }) {
-  const [prompt, setPrompt] = React.useState(() => localStorage.getItem('pf__prompt') || '');
+  const [prompt, setPrompt] = React.useState(() => memoryStorage.getItem('pf__prompt') || '');
 
   React.useEffect(() => {
-    localStorage.setItem('pf__prompt', prompt);
+    memoryStorage.setItem('pf__prompt', prompt);
   }, [prompt]);
 
   const handleSubmit = (e) => {
