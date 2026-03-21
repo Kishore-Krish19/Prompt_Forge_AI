@@ -311,7 +311,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right flex items-center gap-3">
                       {isBest && <span className="text-[10px] bg-emerald-500 text-white shadow-sm px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Winner</span>}
-                      <div className={`px-2 py-1 rounded-md border flex items-center justify-center min-w-[3rem] ${currentScoreClasses}`}>
+                      <div className={`dashboard-badge px-2 py-1 rounded-md border flex items-center justify-center min-w-[3rem] ${currentScoreClasses}`}>
                         <span className="text-xl font-black">{finalScore}</span>
                         <span className="opacity-70 font-bold text-xs ml-0.5">/10</span>
                       </div>
@@ -381,12 +381,12 @@ const TableRow = ({ prompt, model, score, timestamp }) => {
     <tr className="hover:bg-slate-50/50 transition-colors">
       <td className="p-3 truncate max-w-[150px] sm:max-w-[300px] font-medium text-slate-800" title={prompt}>{prompt}</td>
       <td className="p-3 text-center">
-        <span className={`text-xs px-2.5 py-1 rounded-full border font-medium whitespace-nowrap ${modelColors}`}>
+        <span className={`dashboard-badge text-xs px-2.5 py-1 rounded-full border font-medium whitespace-nowrap ${modelColors}`}>
           {model}
         </span>
       </td>
       <td className="p-3 text-center font-bold text-slate-800 h-10 flex justify-center items-center mt-0.5">
-         <div className={`px-2 py-0.5 rounded-md border flex items-center justify-center min-w-[3rem] ${scoreColors}`}>
+         <div className={`dashboard-badge px-2 py-0.5 rounded-md border flex items-center justify-center min-w-[3rem] ${scoreColors}`}>
            {score}<span className="opacity-70 font-medium text-xs ml-0.5">/10</span>
          </div>
       </td>

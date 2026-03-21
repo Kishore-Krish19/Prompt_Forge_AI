@@ -6,30 +6,30 @@
   font-weight: 400;
   
   /* Primary Theme Tokens */
-  --bg-main: #f8fafc;        /* slate-50 */
-  --bg-card: #ffffff;        /* white */
-  --bg-card-hover: #f1f5f9;  /* slate-100 */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card-hover: #f1f5f9;
   
-  --text-main: #0f172a;      /* slate-900 */
-  --text-secondary: #334155; /* slate-700 */
-  --text-muted: #64748b;     /* slate-500 */
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
   
-  --border-main: #e2e8f0;    /* slate-200 */
-  --border-light: #f1f5f9;   /* slate-100 */
+  --border-main: #e2e8f0;
+  --border-light: #f1f5f9;
 }
 
 body.dark-theme {
-  /* Dark Theme Tokens (Modern blue/purple shade) */
-  --bg-main: #0b1120;        /* deep blueish black */
-  --bg-card: #151c2f;        /* dark indigo slate */
-  --bg-card-hover: #1e293b;  /* lighter slate */
+  /* Dark Theme Tokens */
+  --bg-primary: #0b1120;
+  --bg-secondary: #151c2f;
+  --bg-card-hover: #1e293b;
   
-  --text-main: #f8fafc;      /* slate-50 */
-  --text-secondary: #cbd5e1; /* slate-300 */
-  --text-muted: #94a3b8;     /* slate-400 */
+  --text-primary: #ffffff;      
+  --text-secondary: #e2e8f0; 
+  --text-muted: #94a3b8;     
   
-  --border-main: #334155;    /* slate-700 */
-  --border-light: #1e293b;   /* slate-800 */
+  --border-main: #334155;    
+  --border-light: #1e293b;   
 }
 
 /* Global Transitions */
@@ -38,25 +38,30 @@ body *, body {
 }
 
 body {
-  background-color: var(--bg-main);
-  color: var(--text-main);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   min-height: 100vh;
   margin: 0;
 }
 
-/* Override Tailwind Utilities for Dark Theme */
-body.dark-theme .bg-slate-50 { background-color: var(--bg-main) !important; }
-body.dark-theme .bg-white { background-color: var(--bg-card) !important; }
-body.dark-theme .bg-slate-100 { background-color: var(--bg-card-hover) !important; }
-body.dark-theme .bg-slate-50\/50,
-body.dark-theme .bg-slate-50\/80 { background-color: rgba(15, 23, 42, 0.6) !important; }
+/* Ensure global text doesn't have low opacity */
+* {
+  --tw-text-opacity: 1 !important;
+}
 
-body.dark-theme .text-slate-900,
-body.dark-theme .text-slate-800 { color: var(--text-main) !important; }
-body.dark-theme .text-slate-700,
-body.dark-theme .text-slate-600 { color: var(--text-secondary) !important; }
-body.dark-theme .text-slate-500,
-body.dark-theme .text-slate-400 { color: var(--text-muted) !important; }
+/* Light & Dark Theme mapped to correct variables */
+.bg-slate-50 { background-color: var(--bg-primary) !important; }
+.bg-white { background-color: var(--bg-secondary) !important; }
+.bg-slate-100 { background-color: var(--bg-card-hover) !important; }
+
+.text-slate-900, .text-slate-800 { color: var(--text-primary) !important; opacity: 1 !important; }
+.text-slate-700, .text-slate-600 { color: var(--text-secondary) !important; opacity: 1 !important; }
+.text-slate-500, .text-slate-400 { color: var(--text-muted) !important; opacity: 1 !important; }
+
+/* Override Tailwind Utilities for Dark Theme Specifics */
+body.dark-theme .bg-slate-50\/50,
+body.dark-theme .bg-slate-50\/80,
+body.dark-theme .bg-white\/80 { background-color: var(--bg-secondary) !important; opacity: 1 !important; backdrop-filter: none !important; }
 
 body.dark-theme .border-slate-100,
 body.dark-theme .border-slate-200 { border-color: var(--border-main) !important; }
@@ -74,12 +79,12 @@ body.dark-theme .bg-green-50, body.dark-theme .bg-green-50\/30, body.dark-theme 
 body.dark-theme .border-green-200, body.dark-theme .border-green-100 { border-color: rgba(34, 197, 94, 0.3) !important; }
 body.dark-theme .text-green-700, body.dark-theme .text-green-800, body.dark-theme .text-green-600 { color: #86efac !important; }
 
-body.dark-theme .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1) !important; text-color: #fcd34d !important }
+body.dark-theme .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1) !important; color: #fcd34d !important; }
 body.dark-theme .border-amber-200 { border-color: rgba(245, 158, 11, 0.3) !important; }
 body.dark-theme .text-amber-700 { color: #fcd34d !important; }
 body.dark-theme .text-amber-500 { color: #fbbf24 !important; }
 
-body.dark-theme .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1) !important; text-color: #93c5fd !important; }
+body.dark-theme .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1) !important; color: #93c5fd !important; }
 body.dark-theme .text-blue-600, body.dark-theme .text-blue-700 { color: #93c5fd !important; }
 
 body.dark-theme .bg-orange-50 { background-color: rgba(249, 115, 22, 0.1) !important; }
@@ -97,25 +102,34 @@ body.dark-theme .bg-slate-300 { background-color: #475569 !important; }
 
 /* Ensure base inputs have dark backgrounds */
 body.dark-theme input {
-  background-color: var(--bg-card) !important;
-  color: var(--text-main) !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
   border-color: var(--border-main) !important;
+  opacity: 1 !important;
+}
+
+body.dark-theme input::placeholder,
+body.dark-theme textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 1 !important;
 }
 
 body.dark-theme textarea {
-  color: var(--text-main) !important;
-  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  background-color: var(--bg-secondary) !important;
+  opacity: 1 !important;
 }
 
 body.dark-theme select {
-  background-color: var(--bg-card) !important;
-  color: var(--text-main) !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
   border-color: var(--border-main) !important;
+  opacity: 1 !important;
 }
 
 body.dark-theme option {
-  background-color: var(--bg-card) !important;
-  color: var(--text-main) !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Update shadow intensity for dark mode */
@@ -125,5 +139,16 @@ body.dark-theme .shadow-sm, body.dark-theme .shadow-md, body.dark-theme .shadow-
 
 /* Gradients that fade to white need adjusting */
 body.dark-theme .to-white {
-  --tw-gradient-to: var(--bg-card) var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: var(--bg-secondary) var(--tw-gradient-to-position) !important;
+}
+
+body.dark-theme .from-purple-50\/20 {
+  --tw-gradient-from: rgba(147, 51, 234, 0.05) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: var(--bg-secondary) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+body.dark-theme .dashboard-badge {
+  background-color: transparent !important;
+  border-color: transparent !important;
 }

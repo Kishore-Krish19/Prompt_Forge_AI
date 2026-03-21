@@ -102,6 +102,24 @@ export default function App() {
     navigate('/benchmark', { state: { answers: answersFromState, runBenchmark: true } });
   };
 
+  const handleResetOptimization = () => {
+    setOriginalPrompt('');
+    setQuestions([]);
+    setOptimizedPrompt('');
+    setPromptScore(0);
+    setPromptAnalysis(null);
+    setSuggestions([]);
+    setError('');
+    memoryStorage.removeItem('pf__originalPrompt');
+    memoryStorage.removeItem('pf__prompt');
+    memoryStorage.removeItem('pf__questions');
+    memoryStorage.removeItem('pf__optimizedPrompt');
+    memoryStorage.removeItem('pf__promptScore');
+    memoryStorage.removeItem('pf__promptAnalysis');
+    memoryStorage.removeItem('pf__suggestions');
+    navigate('/', { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -216,8 +234,8 @@ export default function App() {
                 {/* Restart & Benchmark Actions */}
                 <div className="flex justify-center gap-4 pt-4">
                   <button 
-                    onClick={() => navigate('/')}
-                    className="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium transition-colors"
+                    onClick={handleResetOptimization}
+                    className="px-6 py-3 rounded-xl bg-slate-800 text-white hover:bg-slate-700 text-sm font-medium transition-colors shadow-sm"
                   >
                     Start New Optimization
                   </button>
