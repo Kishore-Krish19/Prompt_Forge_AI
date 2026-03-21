@@ -8,25 +8,40 @@
 
 ### 🧠 Intelligent Prompt Analysis
 - Detects user intent (text, image, automation, coding)
-- Identifies missing elements
+- Identifies missing elements in prompts
 - Suggests improvements dynamically
 
 ### ✨ Prompt Enhancement Engine
-- Generates optimized, structured prompts
-- Adds tone, style, constraints, and output expectations
+- Generates structured and optimized prompts
+- Adds tone, constraints, format, and requirements
 
 ### 🎯 Intent-Based Requirement Generation
-- Automatically generates context-aware requirements
+- Dynamically generates missing parameters based on prompt type
+- Adapts requirements for different use cases (image, code, text, etc.)
 
-### 🎤 Multilingual Speech-to-Text Input (NEW)
+### 🎤 Multilingual Speech-to-Text Input
 - Supports voice input in multiple languages
-- Converts speech into text before processing
+- Converts speech into text for processing
 
-### 🔄 Real-Time Prompt Processing
-- Instant prompt generation and feedback
+### ⚡ Real-Time Prompt Processing
+- Instant prompt enhancement and feedback
 
 ### 🌐 Web-Based Interface
-- Responsive UI accessible via browser
+- Simple and responsive user interface
+- Accessible across devices
+
+### 📊 Benchmarking & Multi-Model Comparison (NEW 🚀)
+- Generates **multiple prompt variants (3 versions)** automatically
+- Sends each variant to different AI models:
+  - Gemini 2.5 Flash  
+  - Groq  
+  - Qwen (Hugging Face)
+- Evaluates outputs based on:
+  - Quality
+  - Completeness
+  - Relevance
+- Selects and displays the **best-performing prompt/output**
+- Eliminates manual trial-and-error for users
 
 ---
 
