@@ -176,17 +176,17 @@ export default function PromptInput({ onSubmit, isLoading }) {
 
   return (
     <div className="w-full">
-      <div className="text-center mb-6">
-        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+      <div className="text-center mb-6 px-4 sm:px-0">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           Prompt Optimizer
         </h2>
-        <p className="mt-2 text-slate-500">
+        <p className="mt-2 text-sm sm:text-base text-slate-500">
           Paste your rough prompt and let AI improve it.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="relative bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 p-6 pb-2 focus-within:border-purple-300 focus-within:ring-2 focus-within:ring-purple-100">
+      <form onSubmit={handleSubmit} className="space-y-4 px-2 sm:px-0">
+        <div className="relative bg-white border border-slate-200 rounded-2xl shadow-sm md:hover:shadow-md transition-all duration-200 p-4 sm:p-6 pb-2 focus-within:border-purple-300 focus-within:ring-2 focus-within:ring-purple-100">
           
           <textarea
             ref={textareaRef}
@@ -194,16 +194,16 @@ export default function PromptInput({ onSubmit, isLoading }) {
             onChange={handlePromptChange}
             disabled={isLoading || isPolishing}
             placeholder="Example: Input a simple prompt like 'create a website for my portfolio'..."
-            className="w-full h-32 p-3 bg-transparent text-slate-800 placeholder:text-slate-400 focus:outline-none resize-none"
+            className="w-full min-h-[120px] sm:h-32 max-h-[50vh] overflow-y-auto p-2 sm:p-3 bg-transparent text-slate-800 placeholder:text-slate-400 focus:outline-none resize-none"
           />
 
-          <div className="flex justify-between items-center p-2 border-t border-slate-100 mt-2">
-            <div className="flex items-center">
+          <div className="flex flex-wrap sm:flex-nowrap justify-between items-center p-2 border-t border-slate-100 mt-2 gap-3">
+            <div className="flex items-center w-full sm:w-auto">
               <select
                 value={selectedLang}
                 onChange={(e) => setSelectedLang(e.target.value)}
                 disabled={isLoading || isListening || isPolishing}
-                className="text-xs bg-slate-50 border border-slate-200 text-slate-600 rounded-md px-2 py-1 outline-none hover:border-slate-300 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto text-xs sm:text-sm bg-slate-50 border border-slate-200 text-slate-600 rounded-lg px-3 py-2 outline-none md:hover:border-slate-300 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-[36px]"
               >
                 {LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>{l.label}</option>
@@ -211,38 +211,39 @@ export default function PromptInput({ onSubmit, isLoading }) {
               </select>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-end w-full sm:w-auto flex-wrap gap-2 sm:gap-3 flex-1 sm:flex-none">
               {isListening && (
-                <span className="text-xs font-medium text-red-500 animate-pulse">
+                <span className="text-xs font-medium text-red-500 animate-pulse whitespace-nowrap">
                   Listening...
                 </span>
               )}
 
               {isPolishing && (
-                <span className="text-xs font-medium text-indigo-500 animate-pulse">
+                <span className="text-xs font-medium text-indigo-500 animate-pulse whitespace-nowrap">
                   Polishing text...
                 </span>
               )}
 
-              <span className="text-xs text-slate-400 mr-4">
-                {prompt.length} characters
+              <span className="text-xs text-slate-400 whitespace-nowrap mr-1 sm:mr-4">
+                {prompt.length} <span className="hidden sm:inline">characters</span>
               </span>
 
               <button
                 type="button"
                 onClick={handleMicrophoneClick}
                 disabled={isLoading || !isSupported || isPolishing}
-                className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${
+                className={`flex shrink-0 items-center justify-center rounded-lg border w-11 h-11 transition-colors ${
                   isListening
                     ? 'border-red-200 bg-red-50 text-red-600'
                     : isPolishing
                     ? 'border-indigo-200 bg-indigo-50 text-indigo-600 animate-pulse'
                     : error
                     ? 'border-amber-200 bg-amber-50 text-amber-600'
-                    : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-purple-600'
+                    : 'border-slate-200 bg-white text-slate-500 md:hover:bg-slate-50 md:hover:text-purple-600 active:bg-slate-50 active:text-purple-600'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
+                aria-label="Toggle voice input"
               >
-                <Mic size={16} />
+                <Mic size={20} />
               </button>
             </div>
           </div>
@@ -257,7 +258,7 @@ export default function PromptInput({ onSubmit, isLoading }) {
         <button
           type="submit"
           disabled={!prompt.trim() || isLoading || isListening || isPolishing}
-          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-[1.02] shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 md:hover:from-purple-700 md:hover:to-indigo-700 active:from-purple-700 active:to-indigo-700 text-white font-medium px-6 py-4 sm:py-3 rounded-xl transition-all duration-200 transform md:hover:scale-[1.02] active:scale-[0.98] shadow-md md:hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[52px]"
         >
           {isLoading ? (
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
