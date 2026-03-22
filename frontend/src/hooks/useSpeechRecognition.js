@@ -1,233 +1,146 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const UNSUPPORTED_BROWSER_ERROR = 'Voice input is not supported in this browser.';
-
-const getMediaRecorderConstructor = () => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  return window.MediaRecorder || null;
-};
-
-const isSpeechCaptureSupported = () => (
-  typeof navigator !== 'undefined' &&
-  Boolean(getMediaRecorderConstructor()) &&
-  Boolean(navigator.mediaDevices?.getUserMedia)
-);
-
-const getPreferredMimeType = (MediaRecorderConstructor) => {
-  if (!MediaRecorderConstructor?.isTypeSupported) {
-    return '';
-  }
-  const MIME_TYPE_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
-  return MIME_TYPE_CANDIDATES.find((mimeType) => MediaRecorderConstructor.isTypeSupported(mimeType)) || '';
-};
-
-const mapStartError = (error) => {
-  switch (error?.name) {
-    case 'NotAllowedError':
-    case 'PermissionDeniedError':
-      return 'Microphone permission denied.';
-    case 'NotFoundError':
-    case 'DevicesNotFoundError':
-      return 'No microphone found.';
-    default:
-      return 'Voice input could not start.';
-  }
-};
-
-const blobToBase64 = (blob) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      const base64 = dataUrl.split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-};
-
-export default function useSpeechRecognition({ onTranscript, getContextTail } = {}) {
-  const recorderRef = useRef(null);
-  const mediaStreamRef = useRef(null);
-  const audioChunksRef = useRef([]);
-
+export default function useSpeechRecognition({ lang = 'en-IN' } = {}) {
   const [isListening, setIsListening] = useState(false);
-  const [isTranslating, setIsTranslating] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
+  const [finalTranscript, setFinalTranscript] = useState('');
   const [error, setError] = useState('');
 
-  const isSupported = isSpeechCaptureSupported();
+  const recognitionRef = useRef(null);
+  const silenceTimeoutRef = useRef(null);
 
-  const stopMediaStream = useCallback(() => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
+  // Safely get the browser's speech recognition constructor
+  const getSupportedRecognition = () => {
+    if (typeof window !== 'undefined') {
+      return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    }
+    return null;
+  };
+
+  const isSupported = Boolean(getSupportedRecognition());
+
+  // Perfect memory cleanup for silence timeouts
+  const clearSilenceTimeout = useCallback(() => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
     }
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-        try {
-          recorderRef.current.stop();
-        } catch {
-          // ignore
-        }
-      }
-      stopMediaStream();
-    };
-  }, [stopMediaStream]);
-
-  const clearError = useCallback(() => setError(''), []);
-  const discardInterim = useCallback(() => setInterimTranscript(''), []);
-
   const stopListening = useCallback(() => {
-    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+    clearSilenceTimeout();
+    if (recognitionRef.current) {
       try {
-        recorderRef.current.stop();
-      } catch {
-        // ignore
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Ignore stop errors if already stopped or aborting
       }
     }
     setIsListening(false);
-  }, []);
+  }, [clearSilenceTimeout]);
 
-  const translateAudio = async (blob, mimeType) => {
-    setIsTranslating(true);
-    try {
-      const base64Audio = await blobToBase64(blob);
-      
-      const apiKey = import.meta.env.VITE_GEMINI_SPEECH_API_KEY;
-      if (!apiKey) {
-        throw new Error("Gemini API key not found in environment.");
-      }
-
-      const model = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-             system_instruction: {
-              parts: [
-                {
-                  text: "Listen to this audio. It may be in any language or a mix of languages. Transcribe and translate it entirely into English. Return ONLY the final English text, with no markdown, conversational filler, or quotes."
-                }
-              ]
-            },
-            contents: [
-              {
-                parts: [
-                  {
-                    inline_data: {
-                      mime_type: mimeType || 'audio/webm',
-                      data: base64Audio
-                    }
-                  }
-                ]
-              }
-            ]
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (response.status === 404 || response.status === 429) {
-          throw new Error("AI processing is currently unavailable.");
-        }
-        throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const cleanText = text.trim();
-      
-      if (cleanText && onTranscript) {
-        onTranscript(cleanText);
-      }
-    } catch (err) {
-      if (err.message.includes("404") || err.message.includes("429") || err.message.includes("unavailable")) {
-        setError("AI processing is currently unavailable.");
-      } else {
-        setError(err.message || 'Failed to translate audio.');
-      }
-    } finally {
-      setIsTranslating(false);
-      setIsListening(false);
-    }
-  };
-
-  const startListening = useCallback(async () => {
+  const startListening = useCallback(() => {
     if (!isSupported) {
-      setError(UNSUPPORTED_BROWSER_ERROR);
+      setError('Voice input is not supported in this browser.');
       return;
     }
 
-    if (isListening || isTranslating) {
-      return;
-    }
+    if (isListening) return;
 
-    const MediaRecorderConstructor = getMediaRecorderConstructor();
-    if (!MediaRecorderConstructor) {
-      setError(UNSUPPORTED_BROWSER_ERROR);
-      return;
-    }
-
+    // Reset state before starting
     setError('');
-    audioChunksRef.current = [];
+    setInterimTranscript('');
+    setFinalTranscript('');
+
+    const SpeechRecognition = getSupportedRecognition();
+    if (!SpeechRecognition) {
+      setError('Voice input is not supported in this browser.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = lang;
+
+    recognition.onresult = (event) => {
+      clearSilenceTimeout(); // Reset the silence timer on every speech event
+
+      let interim = '';
+      let final = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+
+      setInterimTranscript(interim);
+      if (final) {
+        setFinalTranscript((prev) => prev + final);
+      }
+
+      // Re-trigger the silence timeout
+      silenceTimeoutRef.current = setTimeout(() => {
+        stopListening();
+      }, 5000);
+    };
+
+    recognition.onerror = (event) => {
+      clearSilenceTimeout();
+      if (event.error !== 'no-speech') {
+        const errorMsg = event.error === 'not-allowed' ? 'Microphone permission denied.' : 'Voice input error.';
+        setError(errorMsg);
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      clearSilenceTimeout();
+      setIsListening(false);
+    };
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-
-      const mimeType = getPreferredMimeType(MediaRecorderConstructor);
-      const recorder = mimeType
-        ? new MediaRecorderConstructor(stream, { mimeType })
-        : new MediaRecorderConstructor(stream);
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        stopMediaStream();
-        setIsListening(false);
-        
-        if (audioChunksRef.current.length > 0) {
-          const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-          translateAudio(audioBlob, recorder.mimeType);
-        }
-      };
-
-      recorderRef.current = recorder;
-      recorder.start();
+      recognition.start();
+      recognitionRef.current = recognition;
       setIsListening(true);
-    } catch (startError) {
-      stopMediaStream();
+
+      // Trigger initial silence timeout in case they start mic but don't speak
+      silenceTimeoutRef.current = setTimeout(() => {
+        stopListening();
+      }, 5000);
+    } catch (err) {
+      setError('Voice input could not start.');
       setIsListening(false);
-      setError(mapStartError(startError));
     }
-  }, [isListening, isTranslating, isSupported, stopMediaStream]);
+  }, [isSupported, lang, isListening, stopListening, clearSilenceTimeout]);
+
+  // Clean up on component unmount
+  useEffect(() => {
+    return () => {
+      clearSilenceTimeout();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort(); // Immediately hard abort to prevent ghost listeners
+        } catch (e) {
+          // Ignore
+        }
+      }
+    };
+  }, [clearSilenceTimeout]);
+
+  const clearError = useCallback(() => setError(''), []);
 
   return {
     isSupported,
     isListening,
-    isTranslating,
     interimTranscript,
+    finalTranscript,
     error,
     startListening,
     stopListening,
     clearError,
-    discardInterim,
   };
 }
