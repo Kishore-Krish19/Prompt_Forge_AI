@@ -13,8 +13,8 @@ class HuggingFaceLLM(BaseLLM):
             masked = api_key[:4] + "..." + (api_key[-4:] if len(api_key) > 4 else "")
             logger.info(f"[HuggingFace] API Key provided: {masked}")
             
-        if not api_key or api_key == "your_api_key_here":
-            logger.warning("[HuggingFace] API key is missing or is dummy placeholder.")
+        if not api_key or api_key == "your_api_key_here" or api_key.startswith("gsk_"):
+            logger.warning("[HuggingFace] API key is missing, dummy, or invalid (Groq key).")
             self.client = None
         else:
             self.client = InferenceClient(api_key=api_key)

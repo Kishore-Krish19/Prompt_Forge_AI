@@ -1,8 +1,20 @@
 import React from 'react';
 import { HelpCircle, ChevronRight } from 'lucide-react';
+import { memoryStorage } from '../utils/memoryStore';
 
 export default function QuestionPanel({ questions = [], onGenerate, onBenchmark, isLoading }) {
-  const [answers, setAnswers] = React.useState({});
+  const [answers, setAnswers] = React.useState(() => {
+    try {
+      const saved = memoryStorage.getItem('pf__answers');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  React.useEffect(() => {
+    memoryStorage.setItem('pf__answers', JSON.stringify(answers));
+  }, [answers]);
 
   const handleChange = (question, value) => {
     setAnswers(prev => ({ ...prev, [question]: value }));
@@ -57,7 +69,7 @@ export default function QuestionPanel({ questions = [], onGenerate, onBenchmark,
           <p className="text-sm text-slate-500 text-center py-4">Generating questions...</p>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-3 mt-2">
+        <div className="flex justify-center mt-2">
           <button 
             type="button" 
             onClick={handleSubmit}
@@ -72,15 +84,6 @@ export default function QuestionPanel({ questions = [], onGenerate, onBenchmark,
                 <ChevronRight size={18} />
               </>
             )}
-          </button>
-
-          <button 
-            type="button" 
-            onClick={handleBenchmarkSubmit}
-            disabled={isLoading || questions.length === 0}
-            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-[1.02] border border-slate-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span>Run Benchmark</span>
           </button>
         </div>
       </form>
