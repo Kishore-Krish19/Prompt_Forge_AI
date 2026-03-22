@@ -8,7 +8,6 @@ import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-# ✅ Initialize logging (from your stashed changes)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -17,7 +16,7 @@ from models.schemas import (
     AnalyzeRequest, AnalyzeResponse,
     OptimizeRequest, OptimizeResponse,
     ScoreRequest, ScoreResponse, ScoreAnalysis,
-    BenchmarkRequest, BenchmarkResponse, AnalyticsResponse
+    BenchmarkRequest, BenchmarkResponse
 )
 
 # Services / Orchestration
@@ -48,7 +47,7 @@ def analyze_prompt(request: AnalyzeRequest):
         intent, questions, provider_used = orchestrator.analyze(request.prompt, request.model)
         return AnalyzeResponse(intent=intent, questions=questions, provider_used=provider_used)
     except Exception as e:
-        logger.error(f"Analyze error: {str(e)}")  # ✅ added logging
+        logger.error(f"Analyze error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Selected AI model failed: {str(e)}"
@@ -60,7 +59,7 @@ def optimize_user_prompt(request: OptimizeRequest):
         optimized, provider_used = orchestrator.optimize(request.prompt, request.requirements, request.model)
         return OptimizeResponse(optimized_prompt=optimized, provider_used=provider_used)
     except Exception as e:
-        logger.error(f"Optimize error: {str(e)}")  # ✅ added logging
+        logger.error(f"Optimize error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Selected AI model failed: {str(e)}"
@@ -81,7 +80,7 @@ def score_user_prompt(request: ScoreRequest):
         
         return ScoreResponse(score=rating, analysis=analysis, suggestions=suggestions, provider_used=provider_used)
     except Exception as e:
-        logger.error(f"Score error: {str(e)}")  # ✅ added logging
+        logger.error(f"Score error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Selected AI model failed: {str(e)}"
@@ -99,19 +98,11 @@ def benchmark_prompt(request: BenchmarkRequest):
             variants=results["variants"]
         )
     except Exception as e:
-        logger.error(f"Benchmark error: {str(e)}")  # ✅ added logging
+        logger.error(f"Benchmark error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Benchmark failed: {str(e)}"
         )
-
-@app.get("/analytics", response_model=AnalyticsResponse)
-def get_analytics():
-    return {
-        "prompt_improvement": {"original": 54, "optimized": 88},
-        "model_performance": {"groq": 8.7, "gemini": 8.1, "huggingface": 9.2},
-        "benchmark_results": {"prompt1": 8, "prompt2": 9, "prompt3": 7}
-    }
 
 @app.get("/health")
 def health_check():

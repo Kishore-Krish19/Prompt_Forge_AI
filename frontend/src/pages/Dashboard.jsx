@@ -143,9 +143,10 @@ export default function Dashboard() {
 
   const loadData = () => {
     let benchHistory = JSON.parse(localStorage.getItem('dashboard_bench_history') || '[]');
-    let genHistory = JSON.parse(localStorage.getItem('dashboard_gen_history') || '[]');
+    let genHistoryRaw = localStorage.getItem('dashboard_gen_history') || '[]';
 
-    const totalPrompts = genHistory.length;
+    const genMatch = genHistoryRaw.match(/"id":/g);
+    const totalPrompts = genMatch ? genMatch.length : 0;
     const totalBenchmarks = benchHistory.length;
 
     let totalScore = 0;

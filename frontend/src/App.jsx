@@ -153,7 +153,7 @@ export default function App() {
                     <option value="gemini">Gemini (2.5 Flash)</option>
                   </select>
                 </div>
-                <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 max-w-2xl mx-auto scale-[1.01] transition-transform duration-300">
+                <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 max-w-2xl mx-auto hover:scale-[1.01] transition-transform duration-300">
                   <PromptInput onSubmit={handleAnalyze} isLoading={isLoading} />
                 </div>
               </>

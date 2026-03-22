@@ -1,6 +1,7 @@
 const BASE_URL = 'http://localhost:8000';
 // const BASE_URL = 'https://prompt-forge-ai-v9be.onrender.com';
 
+
 /**
  * Sends prompt to /analyze to get intent and clarification questions.
  * @param {string} prompt - User entered rough prompt.
@@ -72,3 +73,4 @@ export const benchmarkPrompt = async (prompt, requirements, model = 'groq') => {
 
   return response.json();
 };
+

@@ -2,298 +2,227 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const UNSUPPORTED_BROWSER_ERROR = 'Voice input is not supported in this browser.';
 
-const getRecognitionConstructor = () => {
+const getMediaRecorderConstructor = () => {
   if (typeof window === 'undefined') {
     return null;
   }
-
-  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  return window.MediaRecorder || null;
 };
 
-const getDefaultLanguage = () => {
-  if (typeof navigator !== 'undefined' && navigator.language) {
-    return navigator.language;
+const isSpeechCaptureSupported = () => (
+  typeof navigator !== 'undefined' &&
+  Boolean(getMediaRecorderConstructor()) &&
+  Boolean(navigator.mediaDevices?.getUserMedia)
+);
+
+const getPreferredMimeType = (MediaRecorderConstructor) => {
+  if (!MediaRecorderConstructor?.isTypeSupported) {
+    return '';
   }
-
-  return 'en-US';
+  const MIME_TYPE_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+  return MIME_TYPE_CANDIDATES.find((mimeType) => MediaRecorderConstructor.isTypeSupported(mimeType)) || '';
 };
 
-const normalizeTranscript = (transcript) => transcript.trim();
-
-const mapRecognitionError = (errorCode) => {
-  switch (errorCode) {
-    case 'not-allowed':
-    case 'service-not-allowed':
+const mapStartError = (error) => {
+  switch (error?.name) {
+    case 'NotAllowedError':
+    case 'PermissionDeniedError':
       return 'Microphone permission denied.';
-    case 'audio-capture':
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
       return 'No microphone found.';
-    case 'network':
-      return 'Voice input is unavailable right now.';
-    case 'no-speech':
-      return 'No speech detected.';
-    case 'aborted':
-      return 'Voice input stopped unexpectedly.';
     default:
       return 'Voice input could not start.';
   }
 };
 
-export default function useSpeechRecognition({ onTranscript, lang } = {}) {
-  const recognitionRef = useRef(null);
-  const transcriptHandlerRef = useRef(onTranscript);
-  const isDisposedRef = useRef(false);
-  const manualStopRef = useRef(false);
-  const interimTranscriptRef = useRef('');
-  const discardedInterimRef = useRef('');
-  const lastFinalTranscriptRef = useRef('');
-  const silenceTimeoutRef = useRef(null);
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+export default function useSpeechRecognition({ onTranscript, getContextTail } = {}) {
+  const recorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   const [isListening, setIsListening] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState('');
 
-  const isSupported = Boolean(getRecognitionConstructor());
+  const isSupported = isSpeechCaptureSupported();
 
-  const updateInterimTranscript = useCallback((nextTranscript) => {
-    interimTranscriptRef.current = nextTranscript;
-    setInterimTranscript((currentTranscript) => (
-      currentTranscript === nextTranscript ? currentTranscript : nextTranscript
-    ));
+  const stopMediaStream = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+        try {
+          recorderRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+      stopMediaStream();
+    };
+  }, [stopMediaStream]);
+
+  const clearError = useCallback(() => setError(''), []);
+  const discardInterim = useCallback(() => setInterimTranscript(''), []);
 
   const stopListening = useCallback(() => {
-    manualStopRef.current = true;
-
-    if (silenceTimeoutRef.current) {
-      clearTimeout(silenceTimeoutRef.current);
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      try {
+        recorderRef.current.stop();
+      } catch {
+        // ignore
+      }
     }
+    setIsListening(false);
+  }, []);
 
-    if (!recognitionRef.current) {
-      updateInterimTranscript('');
-      setIsListening(false);
-      manualStopRef.current = false;
-      return;
-    }
-
+  const translateAudio = async (blob, mimeType) => {
+    setIsTranslating(true);
     try {
-      recognitionRef.current.stop();
-    } catch {
-      updateInterimTranscript('');
+      const base64Audio = await blobToBase64(blob);
+      
+      const apiKey = import.meta.env.VITE_GEMINI_SPEECH_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API key not found in environment.");
+      }
+
+      const model = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+             system_instruction: {
+              parts: [
+                {
+                  text: "Listen to this audio. It may be in any language or a mix of languages. Transcribe and translate it entirely into English. Return ONLY the final English text, with no markdown, conversational filler, or quotes."
+                }
+              ]
+            },
+            contents: [
+              {
+                parts: [
+                  {
+                    inline_data: {
+                      mime_type: mimeType || 'audio/webm',
+                      data: base64Audio
+                    }
+                  }
+                ]
+              }
+            ]
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 404 || response.status === 429) {
+          throw new Error("AI processing is currently unavailable.");
+        }
+        throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const cleanText = text.trim();
+      
+      if (cleanText && onTranscript) {
+        onTranscript(cleanText);
+      }
+    } catch (err) {
+      if (err.message.includes("404") || err.message.includes("429") || err.message.includes("unavailable")) {
+        setError("AI processing is currently unavailable.");
+      } else {
+        setError(err.message || 'Failed to translate audio.');
+      }
+    } finally {
+      setIsTranslating(false);
       setIsListening(false);
-      manualStopRef.current = false;
     }
-  }, [updateInterimTranscript]);
+  };
 
-  useEffect(() => {
-    transcriptHandlerRef.current = onTranscript;
-  }, [onTranscript]);
-
-  useEffect(() => {
-    isDisposedRef.current = false;
-
-    return () => {
-      isDisposedRef.current = true;
-      transcriptHandlerRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isSupported) {
-      return undefined;
-    }
-
-    const RecognitionConstructor = getRecognitionConstructor();
-
-    if (!RecognitionConstructor) {
-      return undefined;
-    }
-
-    const recognition = new RecognitionConstructor();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    recognition.lang = lang || getDefaultLanguage();
-
-    const resetSilenceTimeout = () => {
-      if (silenceTimeoutRef.current) {
-        clearTimeout(silenceTimeoutRef.current);
-      }
-      silenceTimeoutRef.current = setTimeout(() => {
-        stopListening();
-      }, 5000);
-    };
-
-    recognition.onstart = () => {
-      if (isDisposedRef.current) {
-        return;
-      }
-
-      manualStopRef.current = false;
-      lastFinalTranscriptRef.current = '';
-      setIsListening(true);
-      resetSilenceTimeout();
-    };
-
-    recognition.onresult = (event) => {
-      resetSilenceTimeout();
-      if (isDisposedRef.current) {
-        return;
-      }
-
-      let nextInterimTranscript = '';
-      const nextFinalTranscripts = [];
-
-      for (let index = event.resultIndex; index < event.results.length; index += 1) {
-        const result = event.results[index];
-        const transcript = normalizeTranscript(result[0]?.transcript || '');
-
-        if (!transcript) {
-          continue;
-        }
-
-        if (result.isFinal) {
-          nextFinalTranscripts.push(transcript);
-          continue;
-        }
-
-        nextInterimTranscript += `${nextInterimTranscript ? ' ' : ''}${transcript}`;
-      }
-
-      updateInterimTranscript(nextInterimTranscript);
-
-      nextFinalTranscripts.forEach((finalTranscript) => {
-        if (discardedInterimRef.current) {
-          if (finalTranscript === discardedInterimRef.current) {
-            discardedInterimRef.current = '';
-            return;
-          }
-
-          discardedInterimRef.current = '';
-        }
-
-        if (finalTranscript === lastFinalTranscriptRef.current) {
-          return;
-        }
-
-        lastFinalTranscriptRef.current = finalTranscript;
-        transcriptHandlerRef.current?.(finalTranscript);
-      });
-    };
-
-    recognition.onerror = (event) => {
-      if (silenceTimeoutRef.current) {
-        clearTimeout(silenceTimeoutRef.current);
-      }
-
-      if (isDisposedRef.current) {
-        return;
-      }
-
-      if (manualStopRef.current && event.error === 'aborted') {
-        manualStopRef.current = false;
-        updateInterimTranscript('');
-        setIsListening(false);
-        return;
-      }
-
-      updateInterimTranscript('');
-      setIsListening(false);
-      setError(mapRecognitionError(event.error));
-    };
-
-    recognition.onend = () => {
-      if (silenceTimeoutRef.current) {
-        clearTimeout(silenceTimeoutRef.current);
-      }
-
-      if (isDisposedRef.current) {
-        return;
-      }
-
-      manualStopRef.current = false;
-      updateInterimTranscript('');
-      setIsListening(false);
-    };
-
-    recognitionRef.current = recognition;
-
-    return () => {
-      if (silenceTimeoutRef.current) {
-        clearTimeout(silenceTimeoutRef.current);
-      }
-
-      manualStopRef.current = true;
-      discardedInterimRef.current = '';
-      lastFinalTranscriptRef.current = '';
-      interimTranscriptRef.current = '';
-
-      if (recognitionRef.current) {
-        recognitionRef.current.onstart = null;
-        recognitionRef.current.onresult = null;
-        recognitionRef.current.onerror = null;
-        recognitionRef.current.onend = null;
-
-        try {
-          recognitionRef.current.abort();
-        } catch {
-          // Ignore cleanup failures from browsers that have already ended recognition.
-        }
-      }
-
-      recognitionRef.current = null;
-    };
-  }, [isSupported, lang, updateInterimTranscript, stopListening]);
-
-  const clearError = useCallback(() => {
-    if (isDisposedRef.current) {
-      return;
-    }
-
-    setError('');
-  }, []);
-
-  const discardInterim = useCallback(() => {
-    const normalizedInterim = normalizeTranscript(interimTranscriptRef.current);
-
-    if (normalizedInterim) {
-      discardedInterimRef.current = normalizedInterim;
-    }
-
-    updateInterimTranscript('');
-  }, [updateInterimTranscript]);
-
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     if (!isSupported) {
       setError(UNSUPPORTED_BROWSER_ERROR);
       return;
     }
 
-    if (!recognitionRef.current) {
-      setError('Voice input could not start.');
+    if (isListening || isTranslating) {
       return;
     }
 
-    if (isListening) {
+    const MediaRecorderConstructor = getMediaRecorderConstructor();
+    if (!MediaRecorderConstructor) {
+      setError(UNSUPPORTED_BROWSER_ERROR);
       return;
     }
 
-    manualStopRef.current = false;
-    discardedInterimRef.current = '';
-    lastFinalTranscriptRef.current = '';
-    updateInterimTranscript('');
     setError('');
+    audioChunksRef.current = [];
 
     try {
-      recognitionRef.current.start();
-    } catch {
-      setError('Voice input could not start.');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const mimeType = getPreferredMimeType(MediaRecorderConstructor);
+      const recorder = mimeType
+        ? new MediaRecorderConstructor(stream, { mimeType })
+        : new MediaRecorderConstructor(stream);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        stopMediaStream();
+        setIsListening(false);
+        
+        if (audioChunksRef.current.length > 0) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+          translateAudio(audioBlob, recorder.mimeType);
+        }
+      };
+
+      recorderRef.current = recorder;
+      recorder.start();
+      setIsListening(true);
+    } catch (startError) {
+      stopMediaStream();
       setIsListening(false);
+      setError(mapStartError(startError));
     }
-  }, [isListening, isSupported, updateInterimTranscript]);
+  }, [isListening, isTranslating, isSupported, stopMediaStream]);
 
   return {
     isSupported,
     isListening,
+    isTranslating,
     interimTranscript,
     error,
     startListening,

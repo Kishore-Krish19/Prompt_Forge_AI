@@ -4,27 +4,22 @@ import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import { memoryStorage } from '../utils/memoryStore';
 
 export default function PromptInput({ onSubmit, isLoading }) {
-  // ✅ Load from memory
-  const [prompt, setPrompt] = React.useState(() => memoryStorage.getItem('pf__prompt') || '');
+  const initialPrompt = memoryStorage.getItem('pf__prompt') || '';
+  const [prompt, setPrompt] = React.useState(initialPrompt);
 
-  const committedPromptRef = React.useRef('');
+  const committedPromptRef = React.useRef(initialPrompt);
   const textareaRef = React.useRef(null);
 
   const unsupportedMessage = 'Voice input is not supported in this browser.';
 
-  // ✅ Save to memory whenever prompt changes
   React.useEffect(() => {
     memoryStorage.setItem('pf__prompt', prompt);
-    committedPromptRef.current = prompt;
   }, [prompt]);
 
   const mergeTranscript = React.useCallback((currentPrompt, transcript) => {
-    let cleanedTranscript = transcript.trim();
+    const cleanedTranscript = transcript.trim();
 
     if (!cleanedTranscript) return currentPrompt;
-
-    cleanedTranscript =
-      cleanedTranscript.charAt(0).toUpperCase() + cleanedTranscript.slice(1);
 
     if (!currentPrompt.trim()) return cleanedTranscript;
 
@@ -44,6 +39,7 @@ export default function PromptInput({ onSubmit, isLoading }) {
   const {
     isSupported,
     isListening,
+    isTranslating,
     interimTranscript,
     error,
     startListening,
@@ -52,9 +48,9 @@ export default function PromptInput({ onSubmit, isLoading }) {
     discardInterim,
   } = useSpeechRecognition({
     onTranscript: handleFinalTranscript,
+    getContextTail: () => committedPromptRef.current,
   });
 
-  // ✅ Live interim transcript update
   React.useEffect(() => {
     const nextPrompt = interimTranscript
       ? mergeTranscript(committedPromptRef.current, interimTranscript)
@@ -63,7 +59,6 @@ export default function PromptInput({ onSubmit, isLoading }) {
     setPrompt((current) => (current === nextPrompt ? current : nextPrompt));
   }, [interimTranscript, mergeTranscript]);
 
-  // ✅ Stop mic when loading
   React.useEffect(() => {
     if (isLoading) {
       stopListening();
@@ -88,7 +83,7 @@ export default function PromptInput({ onSubmit, isLoading }) {
   };
 
   const handleMicrophoneClick = () => {
-    if (isLoading) return;
+    if (isLoading || isTranslating) return;
 
     if (error) clearError();
 
@@ -134,6 +129,12 @@ export default function PromptInput({ onSubmit, isLoading }) {
               </span>
             )}
 
+            {isTranslating && (
+              <span className="text-xs font-medium text-indigo-500 animate-pulse">
+                Translating...
+              </span>
+            )}
+
             <span className="text-xs text-slate-400 mr-4">
               {prompt.length} characters
             </span>
@@ -141,10 +142,12 @@ export default function PromptInput({ onSubmit, isLoading }) {
             <button
               type="button"
               onClick={handleMicrophoneClick}
-              disabled={isLoading || !isSupported}
+              disabled={isLoading || !isSupported || isTranslating}
               className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${
                 isListening
                   ? 'border-red-200 bg-red-50 text-red-600'
+                  : isTranslating
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-600 animate-pulse'
                   : error
                   ? 'border-amber-200 bg-amber-50 text-amber-600'
                   : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-purple-600'
