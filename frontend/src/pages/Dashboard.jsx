@@ -9,14 +9,14 @@ const initTracker = () => {
   window.__dashboard_tracker_initialized = true;
 
   const originalSetItem = memoryStorage.setItem;
-  
+
   memoryStorage.setItem = (key, value) => {
     originalSetItem(key, value);
     if (key === 'pf__promptScore') {
-       setTimeout(() => trackGeneration(), 50);
+      setTimeout(() => trackGeneration(), 50);
     }
     if (key === 'pf__benchmarkResults') {
-       setTimeout(() => trackBenchmark(), 50);
+      setTimeout(() => trackBenchmark(), 50);
     }
   };
 
@@ -36,14 +36,14 @@ function trackGeneration() {
   const original = memoryStorage.getItem('pf__originalPrompt');
   const provider = memoryStorage.getItem('pf__providerUsed') || memoryStorage.getItem('pf__selectedModel') || 'Groq';
   const score = sanitizeScore(memoryStorage.getItem('pf__promptScore'));
-  
+
   if (!original) return;
 
   const history = JSON.parse(localStorage.getItem('dashboard_gen_history') || '[]');
-  
+
   const isDup = history.some(h => h.prompt === original && h.model === provider && h.score === score);
   if (isDup) return;
-  
+
   history.unshift({
     id: Date.now() + Math.random(),
     prompt: original,
@@ -59,16 +59,16 @@ function trackBenchmark() {
   const original = memoryStorage.getItem('pf__originalPrompt');
   const resultsStr = memoryStorage.getItem('pf__benchmarkResults');
   if (!original || !resultsStr) return;
-  
+
   try {
     const results = JSON.parse(resultsStr);
     if (!results || !results.variants || results.variants.length === 0) return;
-    
+
     const history = JSON.parse(localStorage.getItem('dashboard_bench_history') || '[]');
-    
+
     const isDup = history.some(h => h.prompt === original && JSON.stringify(h.results.variants) === JSON.stringify(results.variants));
     if (isDup) return;
-    
+
     history.unshift({
       id: Date.now() + Math.random(),
       prompt: original,
@@ -77,7 +77,7 @@ function trackBenchmark() {
     });
     localStorage.setItem('dashboard_bench_history', JSON.stringify(history));
     window.dispatchEvent(new Event('dashboard_data_updated'));
-  } catch (e) {}
+  } catch (e) { }
 }
 
 initTracker();
@@ -98,20 +98,20 @@ const ensureUniqueScores = (variants) => {
   }));
 
   let used = new Set();
-  items.sort((a,b) => {
-     if (b.score !== a.score) return b.score - a.score;
-     const lenA = a.prompt ? a.prompt.length : 0;
-     const lenB = b.prompt ? b.prompt.length : 0;
-     return lenB - lenA; // dynamic tie break based on text length
+  items.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const lenA = a.prompt ? a.prompt.length : 0;
+    const lenB = b.prompt ? b.prompt.length : 0;
+    return lenB - lenA; // dynamic tie break based on text length
   });
-  
+
   items.forEach(v => {
-     let s = v.score;
-     while(used.has(s) && s > 0) {
-        s -= 1;
-     }
-     v.score = s;
-     used.add(s);
+    let s = v.score;
+    while (used.has(s) && s > 0) {
+      s -= 1;
+    }
+    v.score = s;
+    used.add(s);
   });
   return items;
 };
@@ -124,7 +124,7 @@ const normalizeName = (raw) => {
 };
 
 const getModelColors = (modelName) => {
-  switch(modelName) {
+  switch (modelName) {
     case 'Groq': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     case 'Hugging Face': return 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200';
     case 'Gemini': return 'bg-sky-50 text-sky-700 border-sky-200';
@@ -197,7 +197,7 @@ export default function Dashboard() {
 
     const uniqueRecent = [];
     const seenCombos = new Set();
-    
+
     for (const item of allRecent) {
       const key = `${item.originalStr.trim().toLowerCase()}`;
       if (!seenCombos.has(key)) {
@@ -223,9 +223,9 @@ export default function Dashboard() {
     loadData();
     const handleUpdate = () => loadData();
     window.addEventListener('dashboard_data_updated', handleUpdate);
-    
+
     const interval = setInterval(() => loadData(), 60000);
-    
+
     return () => {
       window.removeEventListener('dashboard_data_updated', handleUpdate);
       clearInterval(interval);
@@ -262,32 +262,32 @@ export default function Dashboard() {
 
       {/* Section 5: System Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          icon={<Zap size={20} />} 
-          title="Total Prompts Created" 
-          value={totalPrompts} 
-          subValue="Based on actual generations" 
+        <StatCard
+          icon={<Zap size={20} />}
+          title="Total Prompts Created"
+          value={totalPrompts}
+          subValue="Based on actual generations"
           iconBg="bg-blue-50 text-blue-600"
         />
-        <StatCard 
-          icon={<Layers size={20} />} 
-          title="Total Benchmarks Run" 
-          value={totalBenchmarks} 
-          subValue="Based on valid run history" 
+        <StatCard
+          icon={<Layers size={20} />}
+          title="Total Benchmarks Run"
+          value={totalBenchmarks}
+          subValue="Based on valid run history"
           iconBg="bg-purple-50 text-purple-600"
         />
-        <StatCard 
-          icon={<Award size={20} />} 
-          title="Best Performing Model" 
-          value={bestModelName === '-' ? 'N/A' : bestModelName} 
-          subValue={bestModelName === '-' ? 'Waiting for benchmarks' : `Latest Winner: ${bestModelScore}/10`} 
+        <StatCard
+          icon={<Award size={20} />}
+          title="Best Performing Model"
+          value={bestModelName === '-' ? 'N/A' : bestModelName}
+          subValue={bestModelName === '-' ? 'Waiting for benchmarks' : `Latest Winner: ${bestModelScore}/10`}
           iconBg="bg-amber-50 text-amber-600"
         />
-        <StatCard 
-          icon={<Compass size={20} />} 
-          title="Average Score" 
-          value={`${avgScore}/10`} 
-          subValue="Aggregated completely across runs" 
+        <StatCard
+          icon={<Compass size={20} />}
+          title="Average Score"
+          value={`${avgScore}/10`}
+          subValue="Aggregated completely across runs"
           iconBg="bg-green-50 text-green-600"
         />
       </div>
@@ -305,7 +305,7 @@ export default function Dashboard() {
                 const currentScoreClasses = getScoreColors(finalScore);
 
                 return (
-                  <div key={index} className={`p-4 rounded-xl border flex items-center justify-between transition-all duration-300 ${isBest ? 'bg-emerald-50/50 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-300 border-emerald-300' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
+                  <div key={index} className={`p-4 rounded-xl border flex items-center justify-between transition-all duration-300 ${isBest ? 'bg-green-50 shadow-md ring-1 ring-green-200 border-green-200' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
                     <div>
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rank {index + 1}</p>
                       <p className="text-sm font-bold text-slate-800 mt-0.5">{normalizedProvider}</p>
@@ -353,7 +353,7 @@ export default function Dashboard() {
               </table>
             </div>
           ) : (
-             <p className="text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl p-8 text-center bg-slate-50">No activity recorded yet.</p>
+            <p className="text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl p-8 text-center bg-slate-50">No activity recorded yet.</p>
           )}
         </div>
       </div>
@@ -387,9 +387,9 @@ const TableRow = ({ prompt, model, score, timestamp }) => {
         </span>
       </td>
       <td className="p-3 text-center font-bold text-slate-800 h-10 flex justify-center items-center mt-0.5">
-         <div className={`dashboard-badge px-2 py-0.5 rounded-md border flex items-center justify-center min-w-[3rem] ${scoreColors}`}>
-           {score}<span className="opacity-70 font-medium text-xs ml-0.5">/10</span>
-         </div>
+        <div className={`dashboard-badge px-2 py-0.5 rounded-md border flex items-center justify-center min-w-[3rem] ${scoreColors}`}>
+          {score}<span className="opacity-70 font-medium text-xs ml-0.5">/10</span>
+        </div>
       </td>
       <td className="p-3 text-right text-xs text-slate-400 whitespace-nowrap hidden sm:table-cell">
         {timeAgo(timestamp)}

@@ -4,10 +4,10 @@ import { ArrowLeft, Loader2, Check, Copy } from 'lucide-react';
 import { benchmarkPrompt } from '../utils/api';
 import { memoryStorage } from '../utils/memoryStore';
 
-export default function BenchmarkPage({ 
-  originalPrompt, 
-  selectedModel, 
-  benchmarkResults, 
+export default function BenchmarkPage({
+  originalPrompt,
+  selectedModel,
+  benchmarkResults,
   setBenchmarkResults,
   providerUsed,
   setProviderUsed
@@ -24,6 +24,27 @@ export default function BenchmarkPage({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+  const handleResetOptimization = () => {
+    try {
+      // 1. Clear the storage so the home page starts completely fresh
+      if (typeof memoryStorage !== 'undefined') {
+        memoryStorage.removeItem('pf__originalPrompt');
+        memoryStorage.removeItem('pf__prompt');
+        memoryStorage.removeItem('pf__questions');
+        memoryStorage.removeItem('pf__optimizedPrompt');
+        memoryStorage.removeItem('pf__promptScore');
+        memoryStorage.removeItem('pf__promptAnalysis');
+        memoryStorage.removeItem('pf__suggestions');
+      }
+
+      // 2. Safely navigate back to the home page
+      navigate('/', { replace: true });
+
+    } catch (err) {
+      console.error("Reset crashed, forcing navigation:", err);
+      navigate('/', { replace: true });
+    }
+  };
 
   useEffect(() => {
     const runBenchmarkIfNeeded = async () => {
@@ -36,7 +57,7 @@ export default function BenchmarkPage({
             try {
               const saved = memoryStorage.getItem('pf__answers');
               if (saved) actualAnswers = JSON.parse(saved);
-            } catch (e) {}
+            } catch (e) { }
           }
 
           const data = await benchmarkPrompt(originalPrompt, actualAnswers || {}, selectedModel);
@@ -71,8 +92,8 @@ export default function BenchmarkPage({
       <div className="space-y-6 max-w-4xl mx-auto py-10">
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-8 rounded-xl text-center shadow-sm">
           <p className="font-semibold mb-4">{error}</p>
-          <button 
-            onClick={() => navigate('/results')} 
+          <button
+            onClick={() => navigate('/results')}
             className="text-sm font-medium bg-red-100 hover:bg-red-200 px-4 py-2 rounded-lg transition-colors"
           >
             Go Back
@@ -94,13 +115,14 @@ export default function BenchmarkPage({
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-2">
-        <button 
+        <button
           onClick={() => navigate('/results')}
           className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           title="Back to Results"
         >
           <ArrowLeft size={20} />
         </button>
+
         <h1 className="text-2xl font-bold text-slate-800">Benchmark</h1>
       </div>
 
@@ -125,13 +147,12 @@ export default function BenchmarkPage({
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-mono whitespace-pre-wrap max-h-60 overflow-y-auto">
           {benchmarkResults.best_prompt}
         </div>
-        <button 
+        <button
           onClick={() => handleCopy(benchmarkResults.best_prompt)}
-          className={`mt-4 w-full font-medium px-4 py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition-all ${
-            copied 
-            ? 'bg-green-100 text-green-700 border border-green-200' 
+          className={`mt-4 w-full font-medium px-4 py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition-all ${copied
+            ? 'bg-green-100 text-green-700 border border-green-200'
             : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
-          }`}
+            }`}
         >
           {copied ? (
             <><Check size={16} /> Copied!</>
@@ -140,31 +161,38 @@ export default function BenchmarkPage({
           )}
         </button>
       </div>
-
+      <div className="flex justify-center w-full mt-6">
+        <button
+          onClick={handleResetOptimization}
+          className="px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg active:scale-95 active:translate-y-0 shadow-sm"
+        >
+          Start New Optimization
+        </button>
+      </div>
       {/* Variant Cards */}
       <h3 className="text-xl font-bold text-slate-800 mt-10 mb-4 border-b pb-2">All Prompt Variants</h3>
       <div className="space-y-6">
         {(benchmarkResults.variants || []).map((variant, i) => {
-           const isBest = i === benchmarkResults.best_prompt_index;
-           const providerName = variant.provider === 'groq' ? 'Groq' : variant.provider === 'huggingface' ? 'Hugging Face' : variant.provider === 'gemini' ? 'Gemini' : variant.provider;
-           
-           return (
-              <div key={i} className={`p-6 rounded-2xl border flex flex-col ${isBest ? 'border-green-300 bg-green-50/20 shadow-md ring-2 ring-green-50' : 'border-slate-200 bg-white shadow-sm'} transition-all`}>
-                <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100/80">
-                  <h4 className="text-lg font-bold text-slate-800 flex items-center gap-3">
-                    <span className="bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-md text-xs tracking-wide uppercase">{providerName}</span>
-                    {isBest && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold">Winner</span>}
-                  </h4>
-                  <div className="text-right">
-                    <span className="text-2xl font-extrabold text-slate-900">{Math.round(variant.score)}</span>
-                    <span className="text-xs text-slate-500 font-medium ml-1">/ 10</span>
-                  </div>
-                </div>
-                <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 text-slate-700 text-sm font-mono whitespace-pre-wrap leading-relaxed shadow-inner">
-                  {variant.prompt}
+          const isBest = i === benchmarkResults.best_prompt_index;
+          const providerName = variant.provider === 'groq' ? 'Groq' : variant.provider === 'huggingface' ? 'Hugging Face' : variant.provider === 'gemini' ? 'Gemini' : variant.provider;
+
+          return (
+            <div key={i} className={`p-6 rounded-2xl border flex flex-col ${isBest ? 'border-green-300 bg-green-50/20 shadow-md ring-2 ring-green-50' : 'border-slate-200 bg-white shadow-sm'} transition-all`}>
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100/80">
+                <h4 className="text-lg font-bold text-slate-800 flex items-center gap-3">
+                  <span className="bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-md text-xs tracking-wide uppercase">{providerName}</span>
+                  {isBest && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold">Winner</span>}
+                </h4>
+                <div className="text-right">
+                  <span className="text-2xl font-extrabold text-slate-900">{Math.round(variant.score)}</span>
+                  <span className="text-xs text-slate-500 font-medium ml-1">/ 10</span>
                 </div>
               </div>
-           );
+              <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 text-slate-700 text-sm font-mono whitespace-pre-wrap leading-relaxed shadow-inner">
+                {variant.prompt}
+              </div>
+            </div>
+          );
         })}
       </div>
     </div>
