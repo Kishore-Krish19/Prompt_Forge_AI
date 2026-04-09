@@ -65,7 +65,7 @@
 ## 🏗️ Tech Stack
 
 **Frontend**
-- HTML, CSS, JavaScript
+- React.js, Tailwind CSS
 
 **Backend**
 - Python (FastAPI)
