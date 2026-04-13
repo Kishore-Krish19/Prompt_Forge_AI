@@ -1,10 +1,9 @@
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt, JWTError
-import os
+from utils.config import JWT_SECRET
 
 security = HTTPBearer()
-JWT_SECRET = os.environ.get("JWT_SECRET", "devsecret")
 JWT_ALGO = "HS256"
 
 

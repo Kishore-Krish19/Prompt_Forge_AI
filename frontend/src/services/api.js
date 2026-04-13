@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-const AUTH_BASE = window.__PF_API_BASE__ || 'http://localhost:8000';
+const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 const API = axios.create({
-  baseURL: AUTH_BASE,
+  baseURL: BASE,
 });
 
 // Attach auth header automatically

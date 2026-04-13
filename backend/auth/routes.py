@@ -11,10 +11,10 @@ from .models import (
 from .utils import send_otp_email
 from .db import init_db
 from jose import jwt
+from utils.config import JWT_SECRET
 
 router = APIRouter(prefix="/api/auth", tags=["auth"]) 
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "devsecret")
 JWT_ALGO = "HS256"
 
 

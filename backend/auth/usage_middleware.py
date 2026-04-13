@@ -25,8 +25,7 @@ async def usage_middleware(request: Request, call_next):
                 token = auth.split(' ', 1)[1]
                 # decode token locally without verifying here to extract sub (email)
                 from jose import jwt
-                import os
-                JWT_SECRET = os.environ.get('JWT_SECRET', 'devsecret')
+                from utils.config import JWT_SECRET
                 JWT_ALGO = 'HS256'
                 try:
                     payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
