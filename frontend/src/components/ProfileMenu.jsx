@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
 import { useTheme } from '../utils/ThemeContext';
 
@@ -22,10 +23,15 @@ const ProfileMenu = () => {
   const role = user?.is_admin ? 'Admin' : 'User';
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    window.location.href = '/login';
+    localStorage.removeItem('user');
+    localStorage.removeItem('pf_auth_email');
+    localStorage.removeItem('is_admin');
+    // use navigate to keep SPA routing
+    navigate('/login-password');
   };
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { verifyOtp, sendOtp } from '../services/api'
+import API from '../services/api'
 
 export default function VerifyOtp(){
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
@@ -101,7 +102,13 @@ export default function VerifyOtp(){
 
   const handleResend = async () => {
     try {
-      await sendOtp(email)
+      const flow = localStorage.getItem('pf_auth_flow') || 'signup'
+      if (flow === 'reset') {
+        await API.post('/api/auth/reset-password-otp', { email })
+      } else {
+        await API.post('/api/auth/send-otp', { email })
+      }
+
       setTimer(30)
       setCanResend(false)
       setOtp(['', '', '', '', '', ''])

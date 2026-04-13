@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { login } from '../services/api'
+import { useNavigate } from 'react-router-dom'
 
 export default function PasswordLogin(){
   const [email, setEmail] = useState('')
@@ -11,6 +12,7 @@ export default function PasswordLogin(){
 
   const emailRef = useRef(null)
   const passwordRef = useRef(null)
+  const navigate = useNavigate()
 
   const handleLogin = async () => {
     setError('')
@@ -82,6 +84,19 @@ export default function PasswordLogin(){
       <button className="w-full bg-blue-600 text-white py-2 rounded" onClick={handleLogin} disabled={loading}>{loading? 'Logging...' : 'Login'}</button>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       {msg && <p className="mt-3 text-sm text-slate-600">{msg}</p>}
+      <p style={{ marginTop: '12px', textAlign: 'center' }}>
+        New user?{' '}
+        <span
+          onClick={() => navigate('/signup')}
+          style={{
+            color: '#8b5cf6',
+            cursor: 'pointer',
+            fontWeight: '500'
+          }}
+        >
+          Sign in
+        </span>
+      </p>
     </div>
   )
 }

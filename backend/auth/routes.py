@@ -40,13 +40,23 @@ async def startup_db():
 @router.post("/send-otp")
 async def send_otp(data: EmailIn):
     email = data.email.lower()
-    await create_user(email)
+
+    user = await find_user_by_email(email)
+    # If user exists do NOT send OTP here — instruct frontend to show options
+    if user:
+        return {
+            "status": "EXISTS",
+            "message": "User already exists. Please login or reset password."
+        }
+
+    # NEW USER: create and send OTP
     otp = "%06d" % random.randint(0, 999999)
+    await create_user(email)
     await set_otp(email, otp, expiry_minutes=5)
     ok = send_otp_email(email, otp)
     if not ok:
         raise HTTPException(status_code=500, detail="Failed to send OTP")
-    return {"status": "sent"}
+    return {"status": "NEW", "message": "OTP sent successfully"}
 
 
 @router.post("/verify-otp")
@@ -62,8 +72,28 @@ async def set_pass(data: PasswordIn):
     user = await find_user_by_email(data.email.lower())
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Update or set the password for existing user
     await save_password(data.email.lower(), data.password)
-    return {"status": "ok"}
+    return {"message": "Password set successfully"}
+
+
+
+@router.post("/reset-password-otp")
+async def reset_password_otp(data: EmailIn):
+    email = data.email.lower()
+
+    user = await find_user_by_email(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    otp = "%06d" % random.randint(0, 999999)
+    await set_otp(email, otp, expiry_minutes=5)
+    ok = send_otp_email(email, otp)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to send OTP")
+
+    return {"status": "RESET", "message": "OTP sent for password reset"}
 
 
 @router.post("/login")

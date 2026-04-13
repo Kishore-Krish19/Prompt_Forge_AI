@@ -169,7 +169,7 @@ export default function App() {
             <Routes>
               {/* Default route: redirect based on auth state */}
               <Route path="/" element={
-                isAuth ? <Navigate to="/optimizer" replace /> : <Navigate to="/login" replace />
+                isAuth ? <Navigate to="/optimizer" replace /> : <Navigate to="/login-password" replace />
               } />
 
               {/* Optimizer main (protected) */}
@@ -306,10 +306,14 @@ export default function App() {
               <Route path="/auth/set-password" element={<SetPassword />} />
               <Route path="/auth/password-login" element={<PasswordLogin />} />
 
+              {/* Signup (OTP-based) */}
+              <Route path="/signup" element={<Login />} />
+
               <Route path="/login" element={<Login />} />
               <Route path="/verify-otp" element={<VerifyOtp />} />
               <Route path="/set-password" element={<SetPassword />} />
               <Route path="/password-login" element={<PasswordLogin />} />
+              <Route path="/login-password" element={<PasswordLogin />} />
 
               <Route path="/admin-login" element={<AdminLogin />} />
 
