@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { ArrowLeft, Play } from 'lucide-react';
 import Navbar from './components/Navbar';
 import PromptInput from './components/PromptInput';
@@ -9,6 +9,18 @@ import PromptScoreCard from './components/PromptScoreCard';
 import SuggestionList from './components/SuggestionList';
 import Dashboard from './pages/Dashboard';
 import BenchmarkPage from './pages/BenchmarkPage';
+import Login from './pages/Login';
+import VerifyOtp from './pages/VerifyOtp';
+import SetPassword from './pages/SetPassword';
+import PasswordLogin from './pages/PasswordLogin';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminLogin from './pages/AdminLogin';
+import AdminRoute from './components/AdminRoute';
+import ProtectedRoute from './components/ProtectedRoute';
+import { isAuthenticated } from './utils/auth';
+
+import API from './services/api';
+import { useEffect, useState } from 'react';
 
 // API Utilities
 import { analyzePrompt, optimizePrompt, scorePrompt } from './utils/api';
@@ -41,6 +53,8 @@ export default function App() {
   const [selectedModel, setSelectedModel] = React.useState(() => memoryStorage.getItem('pf__selectedModel') || 'groq');
   const [providerUsed, setProviderUsed] = React.useState(() => memoryStorage.getItem('pf__providerUsed') || '');
   const [benchmarkResults, setBenchmarkResults] = React.useState(() => safeParse('pf__benchmarkResults', null));
+  const [usage, setUsage] = useState(null);
+  const [accountEmail, setAccountEmail] = React.useState(() => localStorage.getItem('pf_auth_email') || '');
 
   React.useEffect(() => {
     memoryStorage.setItem('pf__originalPrompt', originalPrompt);
@@ -53,6 +67,21 @@ export default function App() {
     memoryStorage.setItem('pf__providerUsed', providerUsed);
     memoryStorage.setItem('pf__benchmarkResults', JSON.stringify(benchmarkResults));
   }, [originalPrompt, questions, optimizedPrompt, promptScore, promptAnalysis, suggestions, selectedModel, providerUsed, benchmarkResults]);
+
+  const isAuth = isAuthenticated();
+
+  useEffect(() => {
+    const fetchUsage = async () => {
+      try {
+        const res = await API.get('/api/admin/my-usage');
+        setUsage(res.data || res);
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    if (isAuth) fetchUsage();
+  }, [isAuth]);
 
   const handleAnalyze = async (prompt) => {
     setIsLoading(true);
@@ -122,7 +151,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
+      <Navbar activeTab={activeTab} onTabChange={setActiveTab} usage={usage} accountEmail={accountEmail} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24 mb-16">
         {activeTab === 'dashboard' ? (
@@ -138,27 +167,39 @@ export default function App() {
             )}
 
             <Routes>
+              {/* Default route: redirect based on auth state */}
               <Route path="/" element={
-                <>
-                  {/* Model Selector Dropdown */}
-                  <div className="flex justify-end items-center space-x-2 max-w-2xl mx-auto px-2 mb-4">
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">AI Provider:</span>
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-600 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 hover:border-slate-300 transition-colors cursor-pointer"
-                    >
-                      <option value="groq">Groq (Llama 3)</option>
-                      <option value="huggingface">Hugging Face (Qwen)</option>
-                      <option value="gemini">Gemini (2.5 Flash)</option>
-                    </select>
-                  </div>
-                  <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 max-w-2xl mx-auto hover:scale-[1.01] transition-transform duration-300">
-                    <PromptInput onSubmit={handleAnalyze} isLoading={isLoading} />
-                  </div>
-                </>
+                isAuth ? <Navigate to="/optimizer" replace /> : <Navigate to="/login" replace />
               } />
 
+              {/* Optimizer main (protected) */}
+              <Route path="/optimizer" element={
+                <ProtectedRoute>
+                  <>
+                    {/* Model Selector Dropdown */}
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}} className="max-w-2xl mx-auto px-2 mb-4">
+                      <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">AI Provider:</span>
+                        <select
+                          value={selectedModel}
+                          onChange={(e) => setSelectedModel(e.target.value)}
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-600 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 hover:border-slate-300 transition-colors cursor-pointer"
+                        >
+                          <option value="groq">Groq (Llama 3)</option>
+                          <option value="huggingface">Hugging Face (Qwen)</option>
+                          <option value="gemini">Gemini (2.5 Flash)</option>
+                        </select>
+                      </div>
+                      
+                    </div>
+                    <div className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6 max-w-2xl mx-auto hover:scale-[1.01] transition-transform duration-300">
+                      <PromptInput onSubmit={handleAnalyze} isLoading={isLoading} />
+                    </div>
+                  </>
+                </ProtectedRoute>
+              } />
+
+              {/* Question / Results / Benchmark keep shared app state (protected) */}
               <Route path="/questions" element={
                 <div className="space-y-6">
                   <div className="flex items-center gap-4 mb-2 max-w-xl mx-auto">
@@ -258,6 +299,24 @@ export default function App() {
                   providerUsed={providerUsed}
                   setProviderUsed={setProviderUsed}
                 />
+              } />
+              {/* Public auth routes (support legacy /auth/* and new short routes) */}
+              <Route path="/auth/login" element={<Login />} />
+              <Route path="/auth/verify" element={<VerifyOtp />} />
+              <Route path="/auth/set-password" element={<SetPassword />} />
+              <Route path="/auth/password-login" element={<PasswordLogin />} />
+
+              <Route path="/login" element={<Login />} />
+              <Route path="/verify-otp" element={<VerifyOtp />} />
+              <Route path="/set-password" element={<SetPassword />} />
+              <Route path="/password-login" element={<PasswordLogin />} />
+
+              <Route path="/admin-login" element={<AdminLogin />} />
+
+              <Route path="/admin" element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
               } />
             </Routes>
           </div>

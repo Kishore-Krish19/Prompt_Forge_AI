@@ -1,5 +1,5 @@
-// const BASE_URL = 'http://localhost:8000';
-const BASE_URL = 'https://prompt-forge-ai-v9be.onrender.com'; //kishore
+const BASE_URL = 'http://localhost:8000';
+// const BASE_URL = 'https://prompt-forge-ai-v9be.onrender.com'; //kishore
 // const BASE_URL ='https://prompt-forge-ai-w2pn.onrender.com'; //priya
 
 /**

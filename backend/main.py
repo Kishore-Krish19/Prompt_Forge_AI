@@ -1,5 +1,8 @@
-import sys
+from dotenv import load_dotenv
 import os
+load_dotenv()
+
+import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -7,6 +10,12 @@ import uvicorn
 import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+# Auth and DB
+from auth.db import init_db
+from auth.routes import router as auth_router
+from auth.admin_routes import router as admin_router
+from auth.middleware import get_current_user
+from auth.usage_middleware import usage_middleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,11 +37,19 @@ app = FastAPI(title="PromptForge AI Multi-Agent Backend", version="1.1.0")
 # Enable CORS for frontend integration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],  # frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize DB and include auth routes
+init_db()
+app.include_router(auth_router)
+app.include_router(admin_router)
+
+# Usage tracking middleware - increments user provider counts after AI calls
+app.middleware('http')(usage_middleware)
 
 # Instantiate Orchestrator
 orchestrator = AgentOrchestrator()

@@ -1,3 +1,0 @@
-Groq Client Base URL before generate: https://api.groq.com
-Response: Hello. I'm an expert prompt engineer, which means 
-Groq Client Base URL after generate: https://api.groq.com

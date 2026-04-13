@@ -1,10 +1,30 @@
 import React from 'react';
 import { Sparkles, Github, BookOpen, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../utils/ThemeContext';
+import ProfileMenu from './ProfileMenu';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getUserFromToken, isAdmin as checkIsAdmin } from '../utils/auth';
 
-export default function Navbar({ activeTab = 'optimizer', onTabChange }) {
+export default function Navbar({ activeTab = 'optimizer', onTabChange, usage = null, accountEmail = '' }) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
+  const location = useLocation();
+  const currentPath = location.pathname || '/';
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const isAuthPage = location.pathname.includes('/login') || location.pathname.includes('/auth');
+  const navigate = useNavigate();
+  const userPayload = token ? getUserFromToken() : null;
+  const isAdmin = checkIsAdmin();
+
+  if (isAuthPage) return null;
+
+  const isActive = (path) => {
+    if (path === '/optimizer' && (currentPath === '/' || currentPath === '')) return true;
+    if (path === '/optimizer' && currentPath.startsWith('/optimizer')) return true;
+    if (path === '/dashboard' && currentPath.startsWith('/dashboard')) return true;
+    if (path === '/admin' && currentPath.startsWith('/admin')) return true;
+    return currentPath === path;
+  };
 
   return (
     <nav className="bg-white border-b border-slate-100 shadow-sm fixed top-0 w-full z-50">
@@ -22,32 +42,38 @@ export default function Navbar({ activeTab = 'optimizer', onTabChange }) {
             </div>
           </div>
 
-          {/* Center: Navigation Tabs */}
-          <div className="hidden md:flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/50">
-            <button
-              onClick={() => onTabChange && onTabChange('optimizer')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'optimizer' ? 'bg-white shadow-sm text-purple-600' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Optimizer
-            </button>
-            <button
-              onClick={() => onTabChange && onTabChange('dashboard')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'dashboard' ? 'bg-white shadow-sm text-purple-600' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Dashboard
-            </button>
-          </div>
+          {/* Center: Navigation Tabs (only when logged in) */}
+          {token ? (
+            <div className="hidden md:flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/50">
+                {isAdmin && (
+                  <button
+                    onClick={() => { navigate('/admin'); onTabChange && onTabChange('admin'); }}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/admin') ? 'bg-white shadow-sm text-purple-600' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    Admin
+                  </button>
+                )}
+
+                <button
+                  onClick={() => { navigate('/optimizer'); onTabChange && onTabChange('optimizer'); }}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/optimizer') ? 'bg-white shadow-sm text-purple-600' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  Optimizer
+                </button>
+
+                <button
+                  onClick={() => { navigate('/dashboard'); onTabChange && onTabChange('dashboard'); }}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive('/dashboard') ? 'bg-white shadow-sm text-purple-600' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  Dashboard
+                </button>
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-1" />
+          )}
 
           {/* Right: Actions */}
           <div className="flex items-center gap-3">
-            {/* <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium transition-colors">
-              <BookOpen size={18} />
-              <span className="hidden sm:inline">Docs</span>
-            </button>
-            <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium transition-colors">
-              <Github size={18} />
-              <span className="hidden sm:inline">GitHub</span>
-            </button> */}
             <div className="w-px bg-slate-200" />
             <button
               onClick={toggleTheme}
@@ -56,6 +82,11 @@ export default function Navbar({ activeTab = 'optimizer', onTabChange }) {
             >
               {isDark ? <Sun size={20} /> : <Moon size={20} />}
             </button>
+
+            {/* Profile menu placed next to theme toggle (only when logged in) */}
+            <div>
+              {token && <ProfileMenu />}
+            </div>
           </div>
         </div>
       </div>
