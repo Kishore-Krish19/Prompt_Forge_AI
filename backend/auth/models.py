@@ -27,7 +27,8 @@ class UserModel(BaseModel):
     isVerified: bool = False
     otp: Optional[str] = None
     otpExpiry: Optional[datetime] = None
-    usage: Dict[str, int] = Field(default_factory=lambda: {"gpt": 0, "claude": 0, "gemini": 0})
+    # usage is dynamic to allow provider/model keys like "gpt-4o", "claude-3"
+    usage: Dict[str, int] = Field(default_factory=dict)
     role: str = "user"
     createdAt: datetime = Field(default_factory=datetime.utcnow)
 
@@ -50,7 +51,7 @@ async def create_user(email: str):
         "email": email.lower(),
         "isVerified": False,
         "is_admin": False,
-        "usage": {"gpt": 0, "claude": 0, "gemini": 0},
+        "usage": {},
         "role": "user",
         "createdAt": datetime.utcnow()
     }
@@ -99,6 +100,7 @@ async def set_password(email: str, password: str):
 
 async def increment_usage(email: str, provider: str):
     db = get_db()
+    # Backwards-compatible wrapper that atomically increments usage for a provider.
     field = f"usage.{provider}"
     await db.users.update_one({"email": email.lower()}, {"$inc": {field: 1}})
 

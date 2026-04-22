@@ -38,16 +38,28 @@ const ProfileMenu = () => {
     let mounted = true;
     const fetchUsage = async () => {
       try {
-        const res = await API.get('/api/admin/my-usage');
+        const res = await API.get('/api/usage');
         if (!mounted) return;
-        setUsage(res.data || res || { gemini: 0, groq: 0, qwen: 0 });
+        setUsage(res.data?.usage || res?.usage || { gemini: 0, groq: 0, qwen: 0 });
       } catch (err) {
         console.error('Usage fetch failed', err);
       }
     };
 
+    // ADD THIS HERE: re-fetch usage when API helpers dispatch usageUpdated.
+    const handleUsageUpdated = () => {
+      fetchUsage();
+    };
+
     fetchUsage();
-    return () => { mounted = false; };
+    // ADD THIS HERE: subscribe once on mount.
+    window.addEventListener('usageUpdated', handleUsageUpdated);
+
+    // ADD THIS HERE: cleanup listener to prevent memory leaks.
+    return () => {
+      mounted = false;
+      window.removeEventListener('usageUpdated', handleUsageUpdated);
+    };
   }, []);
 
   console.log('USER:', user);

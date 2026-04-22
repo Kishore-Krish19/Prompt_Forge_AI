@@ -12,26 +12,33 @@ class AgentOrchestrator:
         self.optimization_agent = OptimizationAgent()
         self.evaluation_agent = EvaluationAgent()
 
-    def analyze(self, prompt: str, provider: str = "groq") -> Tuple[str, List[str], str]:
+    def analyze(self, prompt: str, provider: str = "groq") -> Tuple[str, List[str], str, int]:
         """
         Coordinates the analysis workflow logic nodes.
         1. Classify Intent
         2. Generate Clarification questions
         """
-        intent, provider_intent = self.intent_agent.run(prompt, provider)
-        questions, provider_req = self.requirement_agent.run(prompt, intent, provider)
-        return intent, questions, provider_req
+        # ADD THIS HERE: unpack token usage from each LLM call.
+        intent, provider_intent, intent_tokens = self.intent_agent.run(prompt, provider)
+        questions, provider_req, req_tokens = self.requirement_agent.run(prompt, intent, provider)
+        token_usage = int(intent_tokens or 0) + int(req_tokens or 0)
+        # MODIFY THIS LINE: include token_usage in orchestrator return.
+        return intent, questions, provider_req, token_usage
 
-    def optimize(self, prompt: str, requirements: Dict[str, str], provider: str = "groq") -> Tuple[str, str]:
+    def optimize(self, prompt: str, requirements: Dict[str, str], provider: str = "groq") -> Tuple[str, str, int]:
         """
         Coordinates the optimization workflow logic nodes.
         """
-        optimized, provider_used = self.optimization_agent.run(prompt, requirements, provider)
-        return optimized, provider_used
+        # ADD THIS HERE: receive token_usage from optimization call.
+        optimized, provider_used, token_usage = self.optimization_agent.run(prompt, requirements, provider)
+        # MODIFY THIS LINE: include token_usage in orchestrator return.
+        return optimized, provider_used, token_usage
 
-    def score(self, prompt: str, provider: str = "groq") -> Tuple[int, Dict[str, int], List[str], str]:
+    def score(self, prompt: str, provider: str = "groq") -> Tuple[int, Dict[str, int], List[str], str, int]:
         """
         Coordinates the evaluation workflow logic nodes.
         """
-        rating, breakdown, suggestions, provider_used = self.evaluation_agent.run(prompt, provider)
-        return rating, breakdown, suggestions, provider_used
+        # ADD THIS HERE: receive token_usage from scoring call.
+        rating, breakdown, suggestions, provider_used, token_usage = self.evaluation_agent.run(prompt, provider)
+        # MODIFY THIS LINE: include token_usage in orchestrator return.
+        return rating, breakdown, suggestions, provider_used, token_usage

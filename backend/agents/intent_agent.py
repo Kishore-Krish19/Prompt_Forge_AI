@@ -9,7 +9,7 @@ class IntentAgent(BaseAgent):
             goal="Detect the user's intent from the raw prompt."
         )
 
-    def run(self, user_prompt: str, provider: str = "groq") -> Tuple[str, str]:
+    def run(self, user_prompt: str, provider: str = "groq") -> Tuple[str, str, int]:
         """
         Runs the intent detection logic using the LLM.
         """
@@ -32,7 +32,8 @@ User Prompt:
 Return ONLY the category name and nothing else.
 Category:
 """
-        response_text, provider_used = self._call_llm(prompt_instruction, provider)
+        # ADD THIS HERE: receive token usage from provider response.
+        response_text, provider_used, token_usage = self._call_llm(prompt_instruction, provider)
         
         # Parse output
         category = response_text.strip().lower()
@@ -44,4 +45,5 @@ Category:
         else:
             self.logger.info(f"Intent Agent detected category: {category}")
             
-        return category, provider_used
+        # MODIFY THIS LINE: return token_usage with existing values.
+        return category, provider_used, token_usage

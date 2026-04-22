@@ -10,7 +10,7 @@ class EvaluationAgent(BaseAgent):
             goal="Analyze prompt quality across clarity, context, and structure metrics layout."
         )
 
-    def run(self, optimized_prompt: str, provider: str = "groq") -> Tuple[int, Dict[str, int], List[str], str]:
+    def run(self, optimized_prompt: str, provider: str = "groq") -> Tuple[int, Dict[str, int], List[str], str, int]:
         """
         Runs the prompt scoring logic using LLM.
         """
@@ -46,7 +46,8 @@ Return your response EXACTLY as a JSON object:
 
 Return ONLY valid JSON and nothing else.
 """
-        response_text, provider_used = self._call_llm(prompt_instruction, provider)
+        # ADD THIS HERE: receive token usage from provider response.
+        response_text, provider_used, token_usage = self._call_llm(prompt_instruction, provider)
         
         score = 50
         analysis = {
@@ -89,4 +90,5 @@ Return ONLY valid JSON and nothing else.
             suggestions = ["Ensure clarity and refine constraints list layout setup parameters."]
 
         self.logger.info(f"Evaluation finished. Computed score: {score}")
-        return score, analysis, suggestions[:4], provider_used
+        # MODIFY THIS LINE: return token_usage with existing values.
+        return score, analysis, suggestions[:4], provider_used, token_usage

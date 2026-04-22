@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 class GeminiLLM(BaseLLM):
     def __init__(self, api_key: str):
         self.api_key = api_key
+        self.last_token_usage = 0
         if api_key:
             masked = api_key[:4] + "..." + (api_key[-4:] if len(api_key) > 4 else "")
             logger.info(f"[Gemini] API Key provided: {masked}")
@@ -24,6 +25,7 @@ class GeminiLLM(BaseLLM):
         if not self.model:
             # Task 5: Skip provider with warning
             raise RuntimeError("Gemini API key is missing or invalid. Skipping provider.")
+        self.last_token_usage = 0
             
         # Debug Logging: Request Prompt
         logger.info(f"[Gemini] Request Prompt: {prompt}")
@@ -41,6 +43,11 @@ class GeminiLLM(BaseLLM):
                 response = self.model.generate_content(prompt, generation_config=generation_config)
             else:
                 response = self.model.generate_content(prompt)
+
+            # ADD THIS HERE: standard Gemini token usage extraction.
+            usage_meta = getattr(response, "usage_metadata", None)
+            if usage_meta:
+                self.last_token_usage = int(getattr(usage_meta, "total_token_count", 0) or 0)
 
             logger.info("[Gemini] Response received successfully.")
             return response.text

@@ -1,43 +1,32 @@
 from fastapi import Request
-from .models import increment_usage
 import json
 
+
 async def usage_middleware(request: Request, call_next):
-    response = await call_next(request)
-
-    # Only increment for POST endpoints that include a model name and when user is authenticated
+    """Middleware that decodes the JWT (if present) and attaches the user's email to request.state.
+    Actual usage logging is performed in the endpoint handlers after successful AI responses to ensure
+    logs are only written on success and to use the provider actually used.
+    """
+    # Attach user email to request.state for endpoint handlers
     try:
-        if request.method == 'POST' and request.url.path in ['/analyze', '/optimize', '/score', '/benchmark']:
-            body = await request.json()
-            model = body.get('model')
-            # map model name to provider key
-            provider_map = {
-                'groq': 'gpt',
-                'huggingface': 'claude',
-                'gemini': 'gemini',
-                'gpt': 'gpt',
-                'claude': 'claude'
-            }
-            provider = provider_map.get(model)
-            # extract user from Authorization header if present
-            auth = request.headers.get('authorization')
-            if provider and auth and auth.lower().startswith('bearer '):
-                token = auth.split(' ', 1)[1]
-                # decode token locally without verifying here to extract sub (email)
-                from jose import jwt
-                from utils.config import JWT_SECRET
-                JWT_ALGO = 'HS256'
-                try:
-                    payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
-                    email = payload.get('sub')
-                    if email:
-                        try:
-                            await increment_usage(email, provider)
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
+        auth = request.headers.get('authorization')
+        if auth and auth.lower().startswith('bearer '):
+            token = auth.split(' ', 1)[1]
+            from jose import jwt
+            from utils.config import JWT_SECRET
+            JWT_ALGO = 'HS256'
+            try:
+                payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
+                email = payload.get('sub')
+                if email:
+                    request.state.user_email = email
+            except Exception:
+                # ignore invalid tokens here; downstream auth will enforce
+                request.state.user_email = None
+        else:
+            request.state.user_email = None
     except Exception:
-        pass
+        request.state.user_email = None
 
+    response = await call_next(request)
     return response

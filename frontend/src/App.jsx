@@ -73,8 +73,8 @@ export default function App() {
   useEffect(() => {
     const fetchUsage = async () => {
       try {
-        const res = await API.get('/api/admin/my-usage');
-        setUsage(res.data || res);
+        const res = await API.get('/api/usage');
+        setUsage(res.data?.usage || res?.usage || res || null);
       } catch (err) {
         // ignore
       }
@@ -93,6 +93,8 @@ export default function App() {
       setQuestions(data.questions || []);
       setProviderUsed(data.provider_used || selectedModel);
       navigate('/questions');
+      // refresh usage after successful prompt generation
+      try { const res = await API.get('/api/usage'); setUsage(res.data?.usage || res?.usage || null); } catch {};
     } catch (err) {
       console.error(err);
       setError(err.message || 'Something went wrong. Please try again.');
@@ -119,6 +121,8 @@ export default function App() {
       setProviderUsed(optimizeData.provider_used || selectedModel);
 
       navigate('/results', { state: { answers } });
+      // refresh usage after successful generation
+      try { const res = await API.get('/api/usage'); setUsage(res.data?.usage || res?.usage || null); } catch {};
     } catch (err) {
       console.error(err);
       setError(err.message || 'Something went wrong. Please try again.');

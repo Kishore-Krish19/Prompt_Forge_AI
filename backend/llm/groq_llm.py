@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 class GroqLLM(BaseLLM):
     def __init__(self, api_key: str):
         self.api_key = api_key
+        self.last_token_usage = 0
         if api_key:
             masked = api_key[:4] + "..." + (api_key[-4:] if len(api_key) > 4 else "")
             logger.info(f"[Groq] API Key provided: {masked}")
@@ -23,6 +24,7 @@ class GroqLLM(BaseLLM):
         if not self.client:
             # Task 5: Skip provider with warning
             raise RuntimeError("Groq API key is missing or invalid. Skipping provider.")
+        self.last_token_usage = 0
             
         # Update Model to llama-3.3-70b-versatile
         model_name = "llama-3.3-70b-versatile"
@@ -45,6 +47,9 @@ class GroqLLM(BaseLLM):
         
         try:
             completion = self.client.chat.completions.create(**payload)
+            # ADD THIS HERE: standard OpenAI/Groq token usage extraction.
+            usage = getattr(completion, "usage", None)
+            self.last_token_usage = int(getattr(usage, "total_tokens", 0) or 0)
             logger.info("[Groq] Response received successfully.")
             return completion.choices[0].message.content
         except Exception as e:

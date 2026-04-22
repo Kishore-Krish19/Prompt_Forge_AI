@@ -14,3 +14,17 @@ def init_db(uri: str = None, db_name: str = None):
 
 def get_db():
     return db
+
+
+async def ensure_indexes():
+    """Ensure indexes for usage_logs collection for analytics and performance."""
+    if db is None:
+        return
+    # Index on userId, createdAt, and compound (userId, model)
+    try:
+        await db.usage_logs.create_index("userId")
+        await db.usage_logs.create_index("createdAt")
+        await db.usage_logs.create_index([("userId", 1), ("model", 1)])
+    except Exception:
+        # best-effort; don't crash startup if indexing fails
+        pass

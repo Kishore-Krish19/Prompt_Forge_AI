@@ -10,7 +10,7 @@ class RequirementAgent(BaseAgent):
             goal="Generate clarification questions as a JSON list."
         )
 
-    def run(self, user_prompt: str, intent: str, provider: str = "groq") -> Tuple[List[str], str]:
+    def run(self, user_prompt: str, intent: str, provider: str = "groq") -> Tuple[List[str], str, int]:
         """
         Runs the questions generation logic using LLM.
         Forces JSON list outputs.
@@ -29,7 +29,8 @@ Return your response EXACTLY as a JSON list of strings representing the question
 
 Return ONLY valid JSON and nothing else. No explanation.
 """
-        response_text, provider_used = self._call_llm(prompt_instruction, provider)
+        # ADD THIS HERE: receive token usage from provider response.
+        response_text, provider_used, token_usage = self._call_llm(prompt_instruction, provider)
         
         # Parse JSON List outputs
         try:
@@ -43,7 +44,8 @@ Return ONLY valid JSON and nothing else. No explanation.
             questions = json.loads(cleaned_text)
             if isinstance(questions, list):
                 self.logger.info(f"Generated {len(questions)} items from JSON stream.")
-                return questions[:6], provider_used
+                # MODIFY THIS LINE: return token_usage with existing values.
+                return questions[:6], provider_used, token_usage
         except Exception as e:
             self.logger.warning(f"Failed to parse JSON questions stream: {str(e)}. Falling back to manual split.")
 
@@ -62,4 +64,5 @@ Return ONLY valid JSON and nothing else. No explanation.
                 "What level of detail do you need?"
             ]
             
-        return questions[:6], provider_used
+        # MODIFY THIS LINE: return token_usage with existing values.
+        return questions[:6], provider_used, token_usage
