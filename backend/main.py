@@ -47,7 +47,7 @@ app = FastAPI(title="PromptForge AI Multi-Agent Backend", version="1.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://prompt-forge-ai-nu.vercel.app",  # Your Vercel frontend
+        "https://prompt-forge-ai-v1.vercel.app",  # Your Vercel frontend
         "http://localhost:5173",  # Local Vite (adjust port if needed)
     ],
     allow_credentials=True,
