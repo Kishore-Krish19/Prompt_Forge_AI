@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import { login } from '../services/api';
 
-const SIGN_UP_URL = 'YOUR_WEB_APP_URL/signup';
-
 const Login = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignUp = () => {
-    if (typeof chrome !== 'undefined' && chrome.tabs && typeof chrome.tabs.create === 'function') {
-      chrome.tabs.create({ url: SIGN_UP_URL });
-      return;
+  const handleSignUpClick = () => {
+    const signupUrl = import.meta.env.VITE_WEB_APP_SIGNUP_URL || 'http://localhost:5173/signup';
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      chrome.tabs.create({ url: signupUrl });
+    } else {
+      window.open(signupUrl, '_blank');
     }
-
-    window.open(SIGN_UP_URL, '_blank');
   };
 
   const handleSubmit = async (e) => {
@@ -83,7 +81,7 @@ const Login = ({ onLoginSuccess }) => {
             New user?{' '}
             <button
               type="button"
-              onClick={handleSignUp}
+              onClick={handleSignUpClick}
               className="text-purple-600 hover:text-purple-700 cursor-pointer font-medium transition-colors"
             >
               Sign up

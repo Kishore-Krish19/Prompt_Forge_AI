@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:8000'; // Default, might need adjusting based on environment
+import { API_BASE_URL } from '../utils/api';
 
 export const getAuthToken = async () => {
   return new Promise((resolve) => {
@@ -48,7 +48,7 @@ const getAuthHeaders = async () => {
 };
 
 export const login = async (email, password) => {
-  const response = await fetch(`${BASE_URL}/api/auth/login`, {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ export const login = async (email, password) => {
 
 export const analyzePrompt = async (prompt, model = 'groq') => {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${BASE_URL}/analyze`, {
+  const response = await fetch(`${API_BASE_URL}/analyze`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ prompt, model }),
@@ -83,7 +83,7 @@ export const analyzePrompt = async (prompt, model = 'groq') => {
 
 export const optimizePrompt = async (prompt, requirements, model = 'groq') => {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${BASE_URL}/optimize`, {
+  const response = await fetch(`${API_BASE_URL}/optimize`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ prompt, requirements, model }),
@@ -99,7 +99,7 @@ export const optimizePrompt = async (prompt, requirements, model = 'groq') => {
 
 export const scorePrompt = async (prompt, model = 'groq') => {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${BASE_URL}/score`, {
+  const response = await fetch(`${API_BASE_URL}/score`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ prompt, model }),

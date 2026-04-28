@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronDown, LogOut, UserCircle2 } from 'lucide-react';
 import { getAuthToken, removeAuthToken } from '../services/api';
+import { API_BASE_URL } from '../utils/api';
 
 const base64UrlDecode = (value) => {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -51,7 +52,7 @@ const ProfileMenu = ({ onLogout }) => {
       }
 
       try {
-        const response = await fetch('http://localhost:8000/api/usage', {
+        const response = await fetch(`${API_BASE_URL}/api/usage`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
