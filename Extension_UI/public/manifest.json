@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "PromptForge AI",
+  "version": "1.0",
+  "description": "Optimize your AI prompts on the fly.",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "PromptForge AI"
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://prompt-forge-ai-v9be.onrender.com/*",
+    "https://prompt-forge-ai-w2pn.onrender.com/*"
+  ]
+}
