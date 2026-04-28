@@ -56,14 +56,26 @@ app.add_middleware(
 )
 
 # Initialize DB and include auth routes
-init_db()
-import asyncio
+# init_db()
+# import asyncio
 
-try:
-    asyncio.run(ensure_indexes())
-except Exception:
-    # best-effort indexing; don't block startup
-    pass
+# try:
+#     asyncio.run(ensure_indexes())
+# except Exception:
+#     # best-effort indexing; don't block startup
+#     pass
+
+from auth.db import init_db, ensure_indexes
+
+@app.on_event("startup")
+async def startup_db_and_indexes():
+    init_db()
+    try:
+        await ensure_indexes()
+        print("Database connected and indexes ensured.")
+    except Exception as e:
+        print(f"Index creation failed (best effort): {e}")
+        pass
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(usage_router)
