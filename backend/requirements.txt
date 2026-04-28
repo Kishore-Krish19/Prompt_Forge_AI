@@ -19,3 +19,9 @@ passlib[bcrypt]==1.7.4
 
 # Optional but recommended
 email-validator==2.1.0.post1
+
+# Auth + Mongo (FIXED)
+motor==3.7.1
+python-jose==3.3.0
+passlib[argon2]==1.7.4
+argon2-cffi==23.1.0
