@@ -23,10 +23,13 @@ def generate_with_fallback(prompt: str, provider: str, **kwargs) -> dict:
             logger.info(f"Trying provider: {p}")
             llm = get_llm(p)
             response = llm.generate(prompt, **kwargs)
+            # ADD THIS HERE: collect per-call token usage exposed by provider client.
+            token_usage = int(getattr(llm, "last_token_usage", 0) or 0)
             logger.info(f"Provider succeeded: {p}")
             return {
                 "provider_used": p,
-                "response": response
+                "response": response,
+                "token_usage": token_usage
             }
         except Exception as e:
             logger.warning(f"Provider failed ({p}): {str(e)}")
@@ -61,5 +64,6 @@ def generate_with_fallback(prompt: str, provider: str, **kwargs) -> dict:
 
     return {
         "provider_used": "mock_fallback_ai",
-        "response": mock_response
+        "response": mock_response,
+        "token_usage": 0
     }

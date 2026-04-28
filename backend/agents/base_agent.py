@@ -26,16 +26,16 @@ class BaseAgent(ABC):
         """
         pass
 
-    def _call_llm(self, prompt: str, provider: str = "groq") -> Tuple[str, str]:
+    def _call_llm(self, prompt: str, provider: str = "groq") -> Tuple[str, str, int]:
         """
         Helper method to invoke the LLM client via fallback manager.
-        Returns Tuple[response_content, provider_used].
+        Returns Tuple[response_content, provider_used, token_usage].
         """
         self.logger.info(f"Invoking LLM [{provider}] for task execution via Fallback Manager...")
         try:
             result_dict = generate_with_fallback(prompt, provider)
             self.logger.info(f"LLM Response received using [{result_dict['provider_used']}].")
-            return result_dict["response"], result_dict["provider_used"]
+            return result_dict["response"], result_dict["provider_used"], int(result_dict.get("token_usage", 0) or 0)
         except Exception as e:
             self.logger.error(f"Failed to execute LLM with fallback chain: {str(e)}")
             raise e

@@ -9,7 +9,7 @@ class OptimizationAgent(BaseAgent):
             goal="Transform the user's rough prompt into a highly optimized prompt layout."
         )
 
-    def run(self, user_prompt: str, requirements: Dict[str, str], provider: str = "groq") -> Tuple[str, str]:
+    def run(self, user_prompt: str, requirements: Dict[str, str], provider: str = "groq") -> Tuple[str, str, int]:
         """
         Runs the prompt optimization logic using the LLM.
         """
@@ -50,7 +50,8 @@ Use the following exact structure in your response:
 
 Return ONLY the optimized prompt and nothing else. No explanation.
 """
-        optimized, provider_used = self._call_llm(prompt_instruction, provider)
+        # ADD THIS HERE: receive token usage from provider response.
+        optimized, provider_used, token_usage = self._call_llm(prompt_instruction, provider)
         
         # Fallback structured prompt construction if response was messy
         if not optimized.startswith("# Role"):
@@ -62,7 +63,9 @@ Return ONLY the optimized prompt and nothing else. No explanation.
                 f"# Constraints\n- Ensure accuracy.\n- Maintain high quality responses.\n\n"
                 f"# Output Format\nDefault structure and instructions."
             )
-            return fallback_prompt, provider_used
+            # MODIFY THIS LINE: return token_usage with existing values.
+            return fallback_prompt, provider_used, token_usage
 
         self.logger.info("Optimization complete.")
-        return optimized, provider_used
+        # MODIFY THIS LINE: return token_usage with existing values.
+        return optimized, provider_used, token_usage

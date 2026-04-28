@@ -2,6 +2,7 @@ import json
 import logging
 import concurrent.futures
 import time
+import re
 from llm.fallback_manager import generate_with_fallback
 
 logger = logging.getLogger(__name__)
@@ -9,300 +10,153 @@ logger = logging.getLogger(__name__)
 # Step 7: Memory-Based Improvement (Persistent History capped 5)
 best_prompts_history = []
 
-def smart_select_provider(user_prompt: str, default_provider: str) -> str:
-    """
-    Dynamically select model based on task keywords triggers.
-    """
-    prompt_lower = user_prompt.lower()
-    if "code" in prompt_lower:
-         return "groq"
-    elif "image" in prompt_lower or "paint" in prompt_lower:
-         return "huggingface"
-    elif "analysis" in prompt_lower:
-         return "gemini"
-    return default_provider
+def clean_json_response(response_data: str) -> str:
+    """Robustly extracts JSON from LLM markdown or conversational text."""
+    if not response_data:
+        return "{}"
+    # Remove markdown code blocks if present
+    cleaned = re.sub(r'```json\s*|```\s*', '', response_data).strip()
+    # Find the first '{' and last '}'
+    start = cleaned.find('{')
+    end = cleaned.rfind('}')
+    if start != -1 and end != -1:
+        return cleaned[start:end+1]
+    return cleaned
 
 def compute_heuristic_score(response: str, requirements: dict) -> float:
-    """
-    Step 3: Compute standalone Heuristic score bounded 1-10.
-    """
+    """Compute standalone Heuristic score bounded 1-10."""
+    if not isinstance(response, str):
+        response = str(response)
+    
     score = 5.0
     response_lower = response.lower()
     
-    # Penalize hallucination indicators
+    # Penalize common 'AI refusal' or 'filler' phrases
     hallucination_indicators = ["as an ai", "i don't have access", "i cannot", "i am an ai"]
     for ind in hallucination_indicators:
         if ind in response_lower:
-            score -= 1.0
+            score -= 1.5
             
-    # Reward structured reasoning
-    if any(c in response for c in ["•", "-", "*"]) or "step " in response_lower or "1." in response:
-        score += 1.0
+    # Reward structure and formatting
+    if any(c in response for c in ["•", "-", "*", "1.", "Step"]):
+        score += 1.5
         
-    # Reward examples
-    if "example" in response_lower or "for instance" in response_lower:
-        score += 1.0
-        
-    # Reward completeness
+    # Reward depth/length balance
     length = len(response)
-    if length > 200:
+    if 300 < length < 1500: # "Sweet spot" for quality
         score += 1.0
-    elif length < 50:
-        score -= 1.0
+    elif length < 100:
+        score -= 2.0
         
-    for k, v in requirements.items():
-         if k.lower() in response_lower or str(v).lower() in response_lower:
-              score += 0.5
+    # Check for requirement keywords
+    if isinstance(requirements, dict):
+        for k, v in requirements.items():
+            if k.lower() in response_lower or str(v).lower() in response_lower:
+                score += 0.5
               
     return min(10.0, max(1.0, float(score)))
 
 def run_critic_agent(response_text: str, provider: str = "huggingface") -> dict:
-    """
-    Step 3: Critic Agent analyzes response deeply individually.
-    """
+    """Critic Agent analyzes response deeply."""
+    default_safe = {"score": 5, "accuracy": "N/A", "completeness": "N/A", "clarity": "N/A", "relevance": "N/A"}
+    
     critic_prompt = f"""
-You are a critical AI reviewer.
-Analyze the following response:
-
+Analyze the following AI response for Accuracy, Completeness, and Clarity:
 "{response_text}"
 
-Evaluate Accuracy, Completeness, Clarity, and Relevance.
-Return EXACTLY a JSON object:
-{{
-  "score": 8,
-  "accuracy": "accurate because...",
-  "completeness": "missing...",
-  "clarity": "clear and simple...",
-  "relevance": "directly addresses..."
-}}
-Return ONLY valid JSON and nothing else. No explanations. No markdown backticks.
+Return ONLY a JSON object:
+{{"score": 1-10, "accuracy": "string", "completeness": "string", "clarity": "string", "relevance": "string"}}
 """
     try:
         res = generate_with_fallback(critic_prompt, provider)
-        cleaned_json = res["response"].strip()
-        if "```" in cleaned_json:
-             parts = cleaned_json.split("```")
-             for part in parts:
-                 if part.strip().startswith("{"):
-                     cleaned_json = part.strip()
-                     break
-                 elif part.strip().startswith("json\n{"):
-                     cleaned_json = part.strip()[5:].strip()
-                     break
-        if cleaned_json.startswith("json\n"):
-             cleaned_json = cleaned_json[5:].strip()
-        return json.loads(cleaned_json)
+        content = res.get("response") if isinstance(res, dict) else None
+        return json.loads(clean_json_response(content))
     except Exception as e:
-        logger.warning(f"Critic Agent failed: {str(e)}")
-        return {"score": 5, "accuracy": "N/A", "completeness": "Error", "clarity": "N/A", "relevance": "N/A"}
+        logger.error(f"Critic Agent failed: {e}")
+        return default_safe
 
-def run_judge_agent(responses: list, critiques: list, user_prompt: str, provider: str = "gemini") -> dict:
-    """
-    Step 4: Judge Agent selects best response based on response contents AND critiques feedbacks.
-    """
+def run_judge_agent(variants: list, critiques: list, user_prompt: str, provider: str = "gemini") -> dict:
+    """Judge Agent compares all variants and their critiques to pick a winner."""
+    comparison_data = ""
+    for i, var in enumerate(variants):
+        comparison_data += f"\n--- OPTION {i+1} (Model: {var['provider']}) ---\n"
+        comparison_data += f"PROMPT USED: {var['prompt']}\n"
+        comparison_data += f"RESPONSE PRODUCED: {var['response'][:500]}...\n"
+        comparison_data += f"CRITIQUE: {json.dumps(critiques[i])}\n"
+
     judge_prompt = f"""
-You are an unbiased AI judge.
-Analyze the following responses for the task "{user_prompt}" along with their critiques:
+You are an expert Prompt Engineer and Quality Judge.
+The user's original goal was: "{user_prompt}"
 
-Response 1 (Model: {responses[0]['provider']}):
-{responses[0]['response']}
-Critique 1:
-{json.dumps(critiques[0])}
+Compare these 3 versions based on which Prompt produced the most useful, accurate, and professional result.
+{comparison_data}
 
-Response 2 (Model: {responses[1]['provider']}):
-{responses[1]['response']}
-Critique 2:
-{json.dumps(critiques[1])}
-
-Response 3 (Model: {responses[2]['provider']}):
-{responses[2]['response']}
-Critique 3:
-{json.dumps(critiques[2])}
-
-Select the BEST response based on Accuracy, Completeness, Clarity, and Real-world usefulness.
-Return EXACTLY a JSON object:
+Identify which OPTION (1, 2, or 3) is the absolute best.
+Return ONLY a JSON object:
 {{
-  "best_response": 1,
-  "reason": "accurate and well structured..."
+  "best_response_index": 1,
+  "reason": "Explain why this prompt/response outperformed the others."
 }}
-Return ONLY valid JSON and nothing else. No explanations. No markdown backticks.
 """
     try:
-        # Step 8: Use stronger Judge
         res = generate_with_fallback(judge_prompt, provider)
-        cleaned_json = res["response"].strip()
-        if "```" in cleaned_json:
-             parts = cleaned_json.split("```")
-             for part in parts:
-                 if part.strip().startswith("{"):
-                     cleaned_json = part.strip()
-                     break
-                 elif part.strip().startswith("json\n{"):
-                     cleaned_json = part.strip()[5:].strip()
-                     break
-        if cleaned_json.startswith("json\n"):
-             cleaned_json = cleaned_json[5:].strip()
-        return json.loads(cleaned_json)
-    except Exception as e:
-         logger.warning(f"Judge Agent failed: {str(e)}")
-         return {"best_response": 1, "reason": "Fallback due to failure"}
+        content = res.get("response") if isinstance(res, dict) else None
+        return json.loads(clean_json_response(content))
+    except Exception:
+        return {"best_response_index": 1, "reason": "Defaulted to first variant."}
 
-def run_benchmark(user_prompt: str, requirements: dict, provider: str = "groq") -> dict:
-    """
-    Upgraded Multi-Agent Prompt Optimization Engine with parallel execution trigger setups setups triggers.
-    """
-    logger.info("Generator Agent: Creating 3 diverse variants from 3 providers.")
-    reqs_str = json.dumps(requirements)
+def run_benchmark(user_prompt: str, requirements: dict) -> dict:
+    """Optimized Engine to compare Groq, Huggingface, and Gemini."""
     providers = ["groq", "huggingface", "gemini"]
-    
-    # 1. Generate Variants in Parallel
-    variants = [None] * 3
-    
-    def generate_and_execute_variant(prov):
-        def attempt_generation():
-            style = ""
-            if prov == "groq":
-                style = "Focus on extreme conciseness, structured bullet points, and high efficiency."
-            elif prov == "huggingface":
-                style = "Focus on creative, descriptive, and highly detailed elaboration."
-            elif prov == "gemini":
-                style = "Focus on analytical depth, sequential reasoning, and clear formatting."
-            
-            prov_prompt = f"""
-You are a Prompt Engineering Expert.
-Improve the following user prompt into a high-quality, clear, and structured prompt.
-{style}
-Include all necessary constraints and context from requirements.
-User prompt: "{user_prompt}"
-User requirements: {reqs_str}
+    variants = []
 
-Return EXACTLY the optimized prompt ONLY. No explanation. No markdown backticks.
-"""
-            # Generate Prompt
-            res_prompt = generate_with_fallback(prov_prompt, prov)
-            prompt_text = res_prompt["response"].strip()
-            # clean up markdown if any
-            if prompt_text.startswith("```"):
-                lines = prompt_text.split('\n')
-                if len(lines) >= 2:
-                    prompt_text = '\n'.join(lines[1:]).replace("```", "").strip()
-            
-            # Generate Response using the generated prompt
-            res_output = generate_with_fallback(prompt_text, prov)
-            model_output = res_output["response"]
-            
-            return {
-                "provider": prov, 
-                "prompt": prompt_text,
-                "response": model_output
-            }
-
-        try:
-            return attempt_generation()
-        except Exception as e1:
-            logger.warning(f"First attempt failed for {prov}: {e1}. Retrying...")
-            try:
-                return attempt_generation()
-            except Exception as e2:
-                logger.error(f"Failed var for {prov} after retry: {e2}")
-                fallback_prompt = f"Act as a professional assistant. Help the user with: {user_prompt}. Detailed optimization for {prov} model context."
-                try:
-                    res_fallback = generate_with_fallback(fallback_prompt, prov)
-                    fallback_resp = res_fallback["response"]
-                except:
-                    fallback_resp = "Error generating response."
-                return {"provider": prov, "prompt": fallback_prompt, "response": fallback_resp}
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {executor.submit(generate_and_execute_variant, prov): i for i, prov in enumerate(providers)}
-        done, not_done = concurrent.futures.wait(futures.keys(), timeout=30)
+    def process_provider(prov):
+        # 1. Generate an optimized version of the prompt using that specific model's strengths
+        opt_prompt_query = f"Improve this prompt for a high-quality AI response. Original: '{user_prompt}'. Reqs: {requirements}. Return only the new prompt text."
+        res_opt = generate_with_fallback(opt_prompt_query, prov)
+        improved_prompt = res_opt.get("response", user_prompt).strip()
         
-        for future in done:
-            idx = futures[future]
-            try:
-                variants[idx] = future.result()
-            except Exception as e:
-                logger.error(f"Future resulted in error: {e}")
-                variants[idx] = None
-                
-        for future in not_done:
-            idx = futures[future]
-            logger.warning(f"Timeout for variant {idx} provider {providers[idx]}")
-            future.cancel()
-            variants[idx] = None
+        # 2. Run that optimized prompt through the same model
+        res_final = generate_with_fallback(improved_prompt, prov)
+        return {
+            "provider": prov,
+            "prompt": improved_prompt,
+            "response": res_final.get("response", "No response generated.")
+        }
 
-    for i in range(3):
-         if not variants[i] or not variants[i].get("prompt") or not variants[i].get("response"):
-              logger.warning(f"Variant {i+1} for {providers[i]} was empty or failed. Using fallback.")
-              fallback_prompt = f"Act as a professional assistant. Help the user with: {user_prompt}."
-              try:
-                  res_fallback = generate_with_fallback(fallback_prompt, providers[i])
-                  fallback_resp = res_fallback["response"]
-              except:
-                  fallback_resp = "Error generating response."
-              variants[i] = {
-                  "provider": providers[i], 
-                  "prompt": fallback_prompt,
-                  "response": fallback_resp
-              }
-
-    # 2. Evaluate Variants directly (Heuristic & Critic)
-    h_scores = [compute_heuristic_score(var["response"], requirements) for var in variants]
-    
-    logger.info("Critic Agent: Analyzing response quality parallel nodes setups.")
-    critiques = []
+    # Parallel generation for speed
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        crit_futures = [executor.submit(run_critic_agent, var["response"]) for var in variants]
+        futures = [executor.submit(process_provider, p) for p in providers]
+        variants = [f.result() for f in futures]
+
+    # Evaluate variants
+    h_scores = [compute_heuristic_score(v["response"], requirements) for v in variants]
+    
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        crit_futures = [executor.submit(run_critic_agent, v["response"]) for v in variants]
         critiques = [f.result() for f in crit_futures]
-        
-    logger.info("Judge Agent: Selecting best response based on contents and critiques.")
-    judge_result = run_judge_agent(variants, critiques, user_prompt)
+
+    # Judge the winner
+    judge_decision = run_judge_agent(variants, critiques, user_prompt)
     
-    try:
-        best_index = int(judge_result.get("best_response", 1)) - 1
-    except (ValueError, TypeError):
-        best_index = 0
-        
-    if best_index < 0 or best_index >= len(variants):
-        best_index = 0
-        
-    reason = judge_result.get("reason", "Selected by judge agent.")
-    
-    return_variants = []
-    for idx in range(3):
-        try:
-             c_val = float(critiques[idx].get("score", 5)) if idx < len(critiques) else 5.0
-        except (ValueError, TypeError):
-             c_val = 5.0
-             
-        try:
-             h_score = float(h_scores[idx])
-        except (ValueError, TypeError):
-             h_score = 5.0
-             
-        # Average heuristic and critic for metadata
-        final_score = round((c_val + h_score) / 2.0, 1)
-        final_score = min(10.0, max(1.0, final_score))
-        
-        return_variants.append({
-            "provider": variants[idx]["provider"],
-            "prompt": variants[idx]["prompt"],
-            "response": variants[idx]["response"],
-            "score": final_score,
-            "critique": critiques[idx] if idx < len(critiques) else {}
+    # Extract winner (handling 1-based index from LLM)
+    idx = judge_decision.get("best_response_index", 1) - 1
+    idx = max(0, min(idx, 2)) # Safety clamp
+
+    # Format return
+    final_variants = []
+    for i in range(3):
+        avg_score = (h_scores[i] + critiques[i].get("score", 5)) / 2
+        final_variants.append({
+            **variants[i],
+            "score": round(avg_score, 1),
+            "critique": critiques[i]
         })
 
-    best_prompt = return_variants[best_index]["prompt"]
-    best_response = return_variants[best_index]["response"]
-    
-    best_prompts_history.append(best_prompt)
-    if len(best_prompts_history) > 5:
-        best_prompts_history.pop(0)
-
     return {
-        "best_prompt": best_prompt,
-        "best_response": best_response,
-        "best_prompt_index": best_index,
-        "judge_reason": reason,
-        "variants": return_variants
+        "best_prompt": final_variants[idx]["prompt"],
+        "best_response": final_variants[idx]["response"],
+        "winner_model": final_variants[idx]["provider"],
+        "judge_reason": judge_decision.get("reason"),
+        "all_variants": final_variants
     }

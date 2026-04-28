@@ -1,20 +1,16 @@
-import os
 from groq import Groq
-from dotenv import load_dotenv
-
-# Load Environment Drivers
-load_dotenv()
+from utils.config import GROQ_API_KEY
 
 # Instantiate Client
-client = Groq(api_key=os.getenv("GROQ_API_KEY", "your_api_key_here"))
+client = Groq(api_key=GROQ_API_KEY or "your_api_key_here")
 
 def generate_response(prompt: str) -> str:
     """
     Sends the prompt to the AI model Llama3-70b and returns the generated text.
     """
-    api_key = os.getenv("GROQ_API_KEY")
+    api_key = GROQ_API_KEY
     
-    if not api_key or api_key == "your_api_key_here":
+    if not api_key:
         # Fallback Simulator for development safety triggers
         return _simulate_response(prompt)
 
