@@ -39,7 +39,7 @@ export const removeAuthToken = async () => {
   });
 };
 
-const getAuthHeaders = async () => {
+export const getAuthHeaders = async () => {
   const token = await getAuthToken();
   return {
     'Content-Type': 'application/json',
@@ -57,7 +57,23 @@ export const login = async (email, password) => {
   });
 
   if (!response.ok) {
-    throw new Error('Invalid credentials');
+    const data = await response.json().catch(() => ({}));
+    const detail = data && data.detail;
+    let message = detail;
+
+    if (!message) {
+      if (response.status === 404) {
+        message = 'User does not exist.';
+      } else if (response.status === 401) {
+        message = 'Invalid email or password.';
+      } else if (response.status === 500) {
+        message = 'Server error. Please try again later.';
+      } else {
+        message = `Request failed with status ${response.status}`;
+      }
+    }
+
+    throw new Error(message);
   }
 
   const data = await response.json();
