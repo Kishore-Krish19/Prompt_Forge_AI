@@ -105,58 +105,122 @@ Return ONLY a JSON object:
     except Exception:
         return {"best_response_index": 1, "reason": "Defaulted to first variant."}
 
-def run_benchmark(user_prompt: str, requirements: dict) -> dict:
-    """Optimized Engine to compare Groq, Huggingface, and Gemini."""
+def run_benchmark(user_prompt: str, requirements: dict, *args, **kwargs) -> dict:
+    """Optimized Engine to compare Groq, Huggingface, and Gemini.
+
+    Accepts extra metadata (e.g. model hints) but ignores them.
+    Returns a payload compatible with backend.models.schemas.BenchmarkResponse.
+    """
     providers = ["groq", "huggingface", "gemini"]
     variants = []
 
     def process_provider(prov):
-        # 1. Generate an optimized version of the prompt using that specific model's strengths
-        opt_prompt_query = f"Improve this prompt for a high-quality AI response. Original: '{user_prompt}'. Reqs: {requirements}. Return only the new prompt text."
-        res_opt = generate_with_fallback(opt_prompt_query, prov)
-        improved_prompt = res_opt.get("response", user_prompt).strip()
-        
-        # 2. Run that optimized prompt through the same model
-        res_final = generate_with_fallback(improved_prompt, prov)
-        return {
-            "provider": prov,
-            "prompt": improved_prompt,
-            "response": res_final.get("response", "No response generated.")
-        }
+        try:
+            # 1. Generate an optimized version of the prompt using that specific model's strengths
+            opt_prompt_query = (
+                f"Improve this prompt for a high-quality AI response. Original: '{user_prompt}'."
+                f" Reqs: {requirements}. Return only the new prompt text."
+            )
+            res_opt = generate_with_fallback(opt_prompt_query, prov)
+            if isinstance(res_opt, dict):
+                improved_prompt = (res_opt.get("response") or user_prompt).strip()
+            else:
+                improved_prompt = str(res_opt).strip() if res_opt else user_prompt
+
+            if not improved_prompt:
+                improved_prompt = user_prompt
+
+            # 2. Run that optimized prompt through the same model
+            res_final = generate_with_fallback(improved_prompt, prov)
+            if isinstance(res_final, dict):
+                final_response = res_final.get("response", "No response generated.")
+            else:
+                final_response = str(res_final) if res_final else "No response generated."
+
+            return {
+                "provider": prov,
+                "prompt": improved_prompt,
+                "response": final_response,
+            }
+        except Exception as e:
+            logger.exception(f"Provider processing failed for {prov}: {e}")
+            return {
+                "provider": prov,
+                "prompt": user_prompt,
+                "response": "",
+            }
 
     # Parallel generation for speed
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(providers)) as executor:
         futures = [executor.submit(process_provider, p) for p in providers]
         variants = [f.result() for f in futures]
 
-    # Evaluate variants
-    h_scores = [compute_heuristic_score(v["response"], requirements) for v in variants]
-    
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        crit_futures = [executor.submit(run_critic_agent, v["response"]) for v in variants]
+    # Evaluate variants (heuristic)
+    h_scores = [compute_heuristic_score(v.get("response", ""), requirements) for v in variants]
+
+    # Run critic agent in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(variants) or 1) as executor:
+        crit_futures = [executor.submit(run_critic_agent, v.get("response", ""), v.get("provider", "huggingface")) for v in variants]
         critiques = [f.result() for f in crit_futures]
 
     # Judge the winner
     judge_decision = run_judge_agent(variants, critiques, user_prompt)
-    
-    # Extract winner (handling 1-based index from LLM)
-    idx = judge_decision.get("best_response_index", 1) - 1
-    idx = max(0, min(idx, 2)) # Safety clamp
 
-    # Format return
+    # Extract winner (handling 1-based index from LLM and string values)
+    raw_idx = judge_decision.get("best_response_index", 1)
+    try:
+        idx = int(raw_idx) - 1
+    except Exception:
+        try:
+            idx = int(str(raw_idx).strip()) - 1
+        except Exception:
+            idx = 0
+    idx = max(0, min(idx, max(0, len(variants) - 1)))
+
+    # Normalize critiques scores and compute average
     final_variants = []
-    for i in range(3):
-        avg_score = (h_scores[i] + critiques[i].get("score", 5)) / 2
+    for i, v in enumerate(variants):
+        crit = critiques[i] if i < len(critiques) and isinstance(critiques[i], dict) else {}
+        crit_score_raw = crit.get("score", 5) if isinstance(crit, dict) else 5
+        try:
+            crit_score = float(crit_score_raw)
+        except Exception:
+            try:
+                crit_score = float(str(crit_score_raw).strip())
+            except Exception:
+                crit_score = 5.0
+
+        h = h_scores[i] if i < len(h_scores) else 5.0
+        avg_score = (h + crit_score) / 2.0
+
         final_variants.append({
-            **variants[i],
+            "provider": v.get("provider"),
+            "prompt": v.get("prompt"),
+            "response": v.get("response"),
             "score": round(avg_score, 1),
-            "critique": critiques[i]
+            "critique": crit,
         })
 
+    # Build benchmark_results mapping
+    benchmark_results = {fv["provider"]: fv["score"] for fv in final_variants}
+
+    # Persist best prompt lightly in history
+    try:
+        best_prompt_text = final_variants[idx]["prompt"]
+        best_prompts_history.append(best_prompt_text)
+        # Cap history to last 5
+        if len(best_prompts_history) > 5:
+            best_prompts_history.pop(0)
+    except Exception:
+        best_prompt_text = user_prompt
+
     return {
-        "best_prompt": final_variants[idx]["prompt"],
-        "best_response": final_variants[idx]["response"],
-        "winner_model": final_variants[idx]["provider"],
-        "judge_reason": judge_decision.get("reason"),
-        "all_variants": final_variants
+        "best_prompt": best_prompt_text,
+        "best_response": final_variants[idx]["response"] if final_variants and idx < len(final_variants) else "",
+        "winner_model": final_variants[idx]["provider"] if final_variants and idx < len(final_variants) else None,
+        "benchmark_results": benchmark_results,
+        "best_prompt_index": idx,
+        "variants": [{"provider": fv["provider"], "prompt": fv["prompt"], "score": fv["score"]} for fv in final_variants],
+        "provider_used": final_variants[idx]["provider"] if final_variants and idx < len(final_variants) else None,
+        "judge_reason": judge_decision.get("reason") if isinstance(judge_decision, dict) else None,
     }
