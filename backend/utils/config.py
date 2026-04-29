@@ -7,6 +7,7 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 MONGODB_DB = os.getenv("MONGODB_DB", "promptforge")
 JWT_SECRET = os.getenv("JWT_SECRET")
 
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 SMTP_HOST = os.getenv("SMTP_HOST")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SMTP_USER = os.getenv("SMTP_USER")
