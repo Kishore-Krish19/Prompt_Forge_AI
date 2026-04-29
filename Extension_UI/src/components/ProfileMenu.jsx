@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronDown, LogOut, UserCircle2 } from 'lucide-react';
-import { getAuthToken, removeAuthToken } from '../services/api';
+import { getAuthToken, getAuthHeaders, removeAuthToken } from '../services/api';
 import { API_BASE_URL } from '../utils/api';
 
 const base64UrlDecode = (value) => {
@@ -52,12 +52,10 @@ const ProfileMenu = ({ onLogout }) => {
       }
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(`${API_BASE_URL}/api/usage`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
         });
 
         if (!response.ok) {
@@ -112,35 +110,38 @@ const ProfileMenu = ({ onLogout }) => {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-[#111827] px-3 py-2 text-sm text-gray-200 transition-colors hover:bg-gray-800"
+        className="inline-flex items-center gap-2 rounded-full border border-[var(--border-main)] bg-transparent px-2 py-1 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] focus:outline-none"
         title={email}
       >
-        <UserCircle2 className="h-4 w-4 text-blue-400" />
-        <span className="max-w-[92px] truncate">{email}</span>
-        <ChevronDown className="h-4 w-4 text-gray-400" />
+        <UserCircle2 className="h-5 w-5 text-[var(--text-primary)]" />
+        <span className="max-w-[120px] truncate">{email}</span>
+        <ChevronDown className="h-4 w-4 text-[var(--text-muted)]" />
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-48 z-50 overflow-hidden rounded-xl border border-gray-700 bg-[#111827] shadow-xl shadow-black/30">
-          <div className="space-y-2 p-3 text-sm text-gray-200">
+        <div
+          className="absolute right-0 mt-2 w-56 z-[9999] overflow-hidden rounded-lg border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-primary)] shadow-2xl shadow-black/50"
+          style={{ backgroundColor: '#151c2f', opacity: 1 }}
+        >
+          <div className="space-y-3 p-4 text-sm text-[var(--text-primary)]">
             <div>
-              <p className="truncate font-medium text-white">{email}</p>
-              <p className="text-xs text-gray-400">{role}</p>
+              <p className="truncate font-medium text-[var(--text-primary)]">{email}</p>
+              <p className="text-xs text-[var(--text-muted)]">{role}</p>
             </div>
 
-            <div className="space-y-1 border-t border-gray-800 pt-2 text-xs text-gray-300">
-              <p className="font-semibold uppercase tracking-[0.18em] text-gray-500">Usage</p>
-              <p>Gemini: {usage.gemini || 0}</p>
-              <p>Groq: {usage.groq || 0}</p>
-              <p>Qwen: {usage.qwen || usage.huggingface || 0}</p>
+            <div className="space-y-1 border-t border-[var(--border-light)] pt-3 text-xs text-[var(--text-muted)]">
+              <p className="font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">Usage</p>
+              <p className="text-sm text-[var(--text-primary)]">Gemini: {usage.gemini || 0}</p>
+              <p className="text-sm text-[var(--text-primary)]">Groq: {usage.groq || 0}</p>
+              <p className="text-sm text-[var(--text-primary)]">Qwen: {usage.qwen || usage.huggingface || 0}</p>
             </div>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-400"
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-500"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4 text-white" />
               Logout
             </button>
           </div>

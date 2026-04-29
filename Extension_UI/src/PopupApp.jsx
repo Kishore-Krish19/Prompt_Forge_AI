@@ -23,14 +23,49 @@ const PopupApp = () => {
   const [error, setError] = useState('');
   const [isWorking, setIsWorking] = useState(false);
 
+  // Dispatch a usageUpdated event so other parts of the UI (ProfileMenu) can re-fetch usage
+  const refreshUsage = () => {
+    try {
+      window.dispatchEvent(new CustomEvent('usageUpdated'));
+    } catch (e) {
+      // Fallback for environments that don't support CustomEvent constructor
+      try {
+        window.dispatchEvent(new Event('usageUpdated'));
+      } catch {}
+    }
+  };
+
   useEffect(() => {
     checkAuth();
   }, []);
 
+  // Apply dark theme class while popup is mounted.
+  useEffect(() => {
+    try {
+      document.body.classList.add('dark-theme');
+    } catch (e) {}
+    return () => {
+      try {
+        document.body.classList.remove('dark-theme');
+      } catch (e) {}
+    };
+  }, []);
+
   const checkAuth = async () => {
-    const token = await getAuthToken();
-    setIsAuthenticated(!!token);
-    setIsLoading(false);
+    try {
+      const token = await getAuthToken();
+      setIsAuthenticated(Boolean(token));
+    } catch (err) {
+      // If reading token fails, assume not authenticated
+      // and prevent downstream reference errors during init
+      // by ensuring isAuthenticated is explicitly false.
+      // Log for debugging.
+      // eslint-disable-next-line no-console
+      console.error('Failed to read auth token', err);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -61,6 +96,8 @@ const PopupApp = () => {
 
     try {
       const data = await analyzePrompt(roughPrompt, model);
+      // notify UI to refresh usage immediately after a successful analyze
+      refreshUsage();
       setQuestions(data.questions || []);
       setAnswers({});
       setCurrentStep('questions');
@@ -90,6 +127,8 @@ const PopupApp = () => {
       setPromptScore(scoreData.score || 0);
       setPromptAnalysis(scoreData.analysis || null);
       setCurrentStep('results');
+      // notify UI to refresh usage immediately after successful optimize+score
+      refreshUsage();
     } catch (err) {
       setError(err.message || 'Failed to generate optimized prompt');
     } finally {
@@ -109,7 +148,7 @@ const PopupApp = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[500px] w-full bg-[#0b0f19]">
+      <div className="flex items-center justify-center min-h-[500px] w-full bg-[var(--bg-primary)]">
         <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -120,11 +159,11 @@ const PopupApp = () => {
   }
 
   return (
-    <div className="relative min-h-[500px] w-full bg-[#0b0f19] flex flex-col">
+    <div className="relative min-h-[500px] w-full bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col">
       <div className="flex items-center justify-between gap-3 px-4 pt-4">
         <div>
-          <h1 className="text-lg font-semibold text-white">Prompt Optimizer</h1>
-          <p className="text-xs text-gray-400">Refine prompts in three steps.</p>
+          <h1 className="text-lg font-semibold text-[var(--text-primary)]">Prompt Optimizer</h1>
+          <p className="text-xs text-[var(--text-muted)]">Refine prompts in three steps.</p>
         </div>
 
         <ProfileMenu onLogout={handleLogout} />
@@ -149,12 +188,12 @@ const PopupApp = () => {
         )}
 
         {currentStep === 'questions' && (
-          <div className="flex h-full flex-col bg-[#0b0f19]">
+          <div className="flex h-full flex-col bg-[var(--bg-primary)]">
             <div className="px-4 pt-4 pb-2">
-              <h2 className="text-lg font-semibold text-white">Question Panel</h2>
-              <div className="mt-3 rounded-lg border border-gray-800 bg-[#111827] px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">Your Prompt</p>
-                <p className="mt-1 line-clamp-3 text-sm text-gray-200">{prompt}</p>
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Question Panel</h2>
+              <div className="mt-3 rounded-lg border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Your Prompt</p>
+                <p className="mt-1 line-clamp-3 text-sm text-[var(--text-primary)]">{prompt}</p>
               </div>
             </div>
 
@@ -169,10 +208,10 @@ const PopupApp = () => {
         )}
 
         {currentStep === 'results' && (
-          <div className="flex h-full flex-col gap-3 bg-[#0b0f19] p-4 text-gray-200">
+          <div className="flex h-full flex-col gap-3 bg-[var(--bg-primary)] p-4 text-[var(--text-primary)]">
             <div className="text-center">
-              <h2 className="text-lg font-semibold text-white">Optimization Complete</h2>
-              <p className="mt-1 text-xs text-gray-400">Your optimized prompt and quality score are ready.</p>
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Optimization Complete</h2>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Your optimized prompt and quality score are ready.</p>
             </div>
 
             <PromptComparison
