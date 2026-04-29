@@ -13,8 +13,8 @@ def send_otp_email(to_email: str, otp: str):
     # Payload configuration for Brevo API v3
     payload = {
         "sender": {
-            "name": EMAIL_FROM_NAME or "PromptForge AI", 
-            "email": EMAIL_FROM or "hivinothini@gmail.com"
+            "name": EMAIL_FROM_NAME,
+            "email": EMAIL_FROM
         },
         "to": [{"email": to_email}],
         "subject": "Your PromptForge OTP",

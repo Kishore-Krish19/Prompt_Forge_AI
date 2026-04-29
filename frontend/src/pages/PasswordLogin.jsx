@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
-import { login } from '../services/api'
+import API, { login } from '../services/api'
 import { useNavigate } from 'react-router-dom'
+import { Maps } from '../utils/Maps'
 
 export default function PasswordLogin(){
   const [email, setEmail] = useState('')
@@ -83,6 +84,27 @@ export default function PasswordLogin(){
 
   const togglePassword = () => setShowPassword(v => !v)
 
+  const handleForgot = async () => {
+    setError('')
+    if (!email || !email.trim()) {
+      setError('Email is required')
+      emailRef.current && emailRef.current.focus()
+      return
+    }
+
+    setLoading(true); setMsg('')
+    try {
+      const e = email.trim()
+      localStorage.setItem('pf_auth_email', e)
+      localStorage.setItem('pf_auth_flow', 'reset')
+      await API.post('/api/auth/reset-password-otp', { email: e })
+      Maps('/verify-otp')
+    } catch (err) {
+      console.error('Forgot password failed', err)
+      setError(err.response?.data?.detail || err.message || 'Failed to send reset OTP')
+    } finally { setLoading(false) }
+  }
+
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded-2xl shadow">
       <h2 className="text-xl font-semibold mb-4">Login with password</h2>
@@ -102,6 +124,11 @@ export default function PasswordLogin(){
           {showPassword ? '🙈' : '👁'}
         </span>
       </div>
+      <p style={{ marginTop: '8px', textAlign: 'right' }}>
+        <span onClick={handleForgot} style={{ color: '#8b5cf6', cursor: 'pointer', fontWeight: '500', fontSize: '0.9rem' }}>
+          Forgot Password?
+        </span>
+      </p>
       <button className="w-full bg-blue-600 text-white py-2 rounded" onClick={handleLogin} disabled={loading}>{loading? 'Logging...' : 'Login'}</button>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       {msg && <p className="mt-3 text-sm text-slate-600">{msg}</p>}

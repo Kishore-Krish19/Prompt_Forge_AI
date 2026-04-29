@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { verifyOtp, sendOtp } from '../services/api'
 import API from '../services/api'
+import { Maps } from '../utils/Maps'
 
 export default function VerifyOtp(){
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const inputsRef = useRef([])
-  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [error, setError] = useState('')
@@ -32,7 +31,7 @@ export default function VerifyOtp(){
     try{
       await verifyOtp(email, code)
       setMsg('Verified — set a password now.')
-      navigate('/auth/set-password')
+      Maps('/auth/set-password')
     }catch(err){
       setError(err.message || 'Verification failed')
     }finally{setLoading(false)}
