@@ -44,7 +44,28 @@ export default function PasswordLogin(){
         window.location.href = '/'
       }
     }catch(err){
-      setError(err.message || 'Invalid credentials')
+      let errorMessage = 'An error occurred. Please try again.'
+      
+      // Check if error response exists
+      if (err.response) {
+        const status = err.response.status
+        const detailMessage = err.response.data?.detail
+        
+        // Prioritize backend detail message if available
+        if (detailMessage) {
+          errorMessage = detailMessage
+        } else if (status === 404) {
+          errorMessage = 'User does not exist.'
+        } else if (status === 401) {
+          errorMessage = 'Invalid email or password.'
+        } else if (status === 500) {
+          errorMessage = 'Server error, please try again later.'
+        }
+      } else if (err.message === 'Network Error' || !err.response) {
+        errorMessage = 'Network error. Please check your connection.'
+      }
+      
+      setError(errorMessage)
     }finally{setLoading(false)}
   }
 
