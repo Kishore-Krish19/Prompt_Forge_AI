@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { verifyOtp, sendOtp } from '../services/api'
 import API from '../services/api'
+import { Maps } from '../utils/Maps'
 
 export default function VerifyOtp(){
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
@@ -30,7 +31,7 @@ export default function VerifyOtp(){
     try{
       await verifyOtp(email, code)
       setMsg('Verified — set a password now.')
-      window.location.href = '/auth/set-password'
+      Maps('/auth/set-password')
     }catch(err){
       setError(err.message || 'Verification failed')
     }finally{setLoading(false)}

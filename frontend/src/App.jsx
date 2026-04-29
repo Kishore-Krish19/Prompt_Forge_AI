@@ -9,6 +9,7 @@ import PromptScoreCard from './components/PromptScoreCard';
 import SuggestionList from './components/SuggestionList';
 import Dashboard from './pages/Dashboard';
 import BenchmarkPage from './pages/BenchmarkPage';
+import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import VerifyOtp from './pages/VerifyOtp';
 import SetPassword from './pages/SetPassword';
@@ -21,15 +22,21 @@ import { isAuthenticated } from './utils/auth';
 
 import API from './services/api';
 import { useEffect, useState } from 'react';
+import { setNavigator } from './utils/Maps';
 
 // API Utilities
 import { analyzePrompt, optimizePrompt, scorePrompt } from './utils/api';
 import { memoryStorage } from './utils/memoryStore';
 
 export default function App() {
+  const isAuth = isAuthenticated();
   const [activeTab, setActiveTab] = React.useState('optimizer');
   const navigate = useNavigate();
   const location = useLocation();
+
+  React.useEffect(() => {
+    try { setNavigator(navigate); } catch (e) {}
+  }, [navigate]);
 
   const safeParse = (key, fallback) => {
     try {
@@ -55,6 +62,7 @@ export default function App() {
   const [benchmarkResults, setBenchmarkResults] = React.useState(() => safeParse('pf__benchmarkResults', null));
   const [usage, setUsage] = useState(null);
   const [accountEmail, setAccountEmail] = React.useState(() => localStorage.getItem('pf_auth_email') || '');
+  const showLandingPage = !isAuth && location.pathname === '/';
 
   React.useEffect(() => {
     memoryStorage.setItem('pf__originalPrompt', originalPrompt);
@@ -68,8 +76,6 @@ export default function App() {
     memoryStorage.setItem('pf__benchmarkResults', JSON.stringify(benchmarkResults));
   }, [originalPrompt, questions, optimizedPrompt, promptScore, promptAnalysis, suggestions, selectedModel, providerUsed, benchmarkResults]);
 
-  const isAuth = isAuthenticated();
-
   useEffect(() => {
     const fetchUsage = async () => {
       try {
@@ -82,6 +88,10 @@ export default function App() {
 
     if (isAuth) fetchUsage();
   }, [isAuth]);
+
+  if (showLandingPage) {
+    return <LandingPage />;
+  }
 
   const handleAnalyze = async (prompt) => {
     setIsLoading(true);
@@ -172,9 +182,7 @@ export default function App() {
 
             <Routes>
               {/* Default route: redirect based on auth state */}
-              <Route path="/" element={
-                isAuth ? <Navigate to="/optimizer" replace /> : <Navigate to="/login-password" replace />
-              } />
+              <Route path="/" element={<Navigate to="/optimizer" replace />} />
 
               {/* Optimizer main (protected) */}
               <Route path="/optimizer" element={

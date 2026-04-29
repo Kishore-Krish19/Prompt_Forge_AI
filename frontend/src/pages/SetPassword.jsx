@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { setPassword } from '../services/api'
+import { Maps } from '../utils/Maps'
 
 export default function SetPassword(){
   const [password, setPass] = useState('')
@@ -33,7 +34,7 @@ export default function SetPassword(){
     try{
       await setPassword(email, password)
       setMsg('Password set. You can login now.')
-      window.location.href = '/auth/password-login'
+      Maps('/login-password')
     }catch(err){
       setMsg(err.message || 'Failed')
     }finally{setLoading(false)}

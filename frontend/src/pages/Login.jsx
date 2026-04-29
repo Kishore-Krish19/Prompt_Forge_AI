@@ -28,7 +28,7 @@ export default function Login() {
       if (res && res.status === 'NEW') {
         localStorage.setItem('pf_auth_email', email.trim())
         localStorage.setItem('pf_auth_flow', 'signup')
-        window.location.href = '/auth/verify'
+        navigate('/auth/verify', { replace: true })
         return
       }
 
