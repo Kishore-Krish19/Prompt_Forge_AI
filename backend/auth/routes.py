@@ -99,10 +99,17 @@ async def reset_password_otp(data: EmailIn):
 @router.post("/login")
 async def login(data: PasswordIn):
     user = await find_user_by_email(data.email.lower())
-    if not user or not user.get("password"):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Check if user exists and has a password set
+    if not user:
+        raise HTTPException(status_code=404, detail="User does not exist.")
+    
+    if not user.get("password"):
+        raise HTTPException(status_code=404, detail="User does not exist.")
+    
+    # Verify password
     if not verify_password(data.password, user.get("password")):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
 
     is_admin = user.get("is_admin", False) or (user.get("role") == "admin")
     payload = {
