@@ -1,39 +1,36 @@
 import smtplib
+import sys
 from email.message import EmailMessage
 from utils.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM_NAME, EMAIL_FROM
 
 def send_otp_email(to_email: str, otp: str):
-    # Construct the email message
     msg = EmailMessage()
     msg["Subject"] = "Your PromptForge OTP"
-    # Ensure EMAIL_FROM in your config matches your verified Brevo sender
     msg["From"] = f"{EMAIL_FROM_NAME} <{EMAIL_FROM}>"
     msg["To"] = to_email
     msg.set_content(f"Your verification code is: {otp}\nThis code expires in 5 minutes.")
 
-    # 1. Fallback for local development if credentials aren't set
+    # Local development fallback
     if not SMTP_USER or not SMTP_PASS:
-        print(f"[DEV EMAIL] OTP for {to_email}: {otp}")
+        print(f"[DEV ONLY] OTP for {to_email}: {otp}", file=sys.stderr)
         return True
 
     try:
-        # 2. Port 587 requires SMTP + .starttls()
-        # We increase the timeout to 15s to account for cloud network latency
-        server = smtplib.SMTP(SMTP_HOST, int(SMTP_PORT), timeout=15)
+        # 1. Initialize connection with a longer timeout for cloud stability
+        server = smtplib.SMTP(SMTP_HOST, int(SMTP_PORT), timeout=25)
         
-        # Identify ourselves to the server
-        server.ehlo() 
-        # Secure the connection
-        server.starttls() 
-        # Re-identify over the secure connection
-        server.ehlo() 
+        # 2. Crucial handshake for Render/Brevo
+        server.ehlo()          # Identify to server
+        server.starttls()      # Force encryption
+        server.ehlo()          # Re-identify over secure line
         
+        # 3. Authenticate and send
         server.login(SMTP_USER, SMTP_PASS)
         server.send_message(msg)
         server.quit()
         
         return True
     except Exception as e:
-        # This will now print the specific Brevo error in your Render logs
-        print(f"CRITICAL: Failed to send email via Brevo: {e}")
+        # This will print the EXACT error in your Render Logs
+        print(f"SMTP DEPLOYMENT FAILURE: {str(e)}", file=sys.stderr)
         return False
