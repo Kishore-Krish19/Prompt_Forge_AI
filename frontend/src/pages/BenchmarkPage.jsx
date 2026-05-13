@@ -173,11 +173,11 @@ export default function BenchmarkPage({
       <h3 className="text-xl font-bold text-slate-800 mt-10 mb-4 border-b pb-2">All Prompt Variants</h3>
       <div className="space-y-6">
         {(benchmarkResults.variants || []).map((variant, i) => {
-          const isBest = i === benchmarkResults.best_prompt_index;
+          const isBest = i === (benchmarkResults.best_prompt_index ?? 0);
           const providerName = variant.provider === 'groq' ? 'Groq' : variant.provider === 'huggingface' ? 'Hugging Face' : variant.provider === 'gemini' ? 'Gemini' : variant.provider;
 
           return (
-            <div key={i} className={`p-6 rounded-2xl border flex flex-col ${isBest ? 'border-green-300 bg-green-50/20 shadow-md ring-2 ring-green-50' : 'border-slate-200 bg-white shadow-sm'} transition-all`}>
+            <div key={i} className={`w-full p-6 rounded-2xl border flex flex-col ${isBest ? 'border-green-300 bg-green-50/20 shadow-md ring-2 ring-green-50' : 'border-slate-200 bg-white shadow-sm'} transition-all`}>
               <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100/80">
                 <h4 className="text-lg font-bold text-slate-800 flex items-center gap-3">
                   <span className="bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-md text-xs tracking-wide uppercase">{providerName}</span>
