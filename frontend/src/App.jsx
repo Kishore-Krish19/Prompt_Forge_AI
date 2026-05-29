@@ -27,6 +27,7 @@ import { setNavigator } from './utils/Maps';
 // API Utilities
 import { analyzePrompt, optimizePrompt, scorePrompt } from './utils/api';
 import { memoryStorage } from './utils/memoryStore';
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 export default function App() {
   const isAuth = isAuthenticated();
@@ -334,6 +335,7 @@ export default function App() {
                   <AdminDashboard />
                 </AdminRoute>
               } />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             </Routes>
           </div>
         )}
