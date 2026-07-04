@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, BarChart3, Sparkles, ShieldCheck, Wand2 } from 'lucide-react';
+import { ArrowRight, BarChart3, Sparkles, ShieldCheck, Wand2, Puzzle } from 'lucide-react';
 
 const features = [
   {
@@ -65,6 +65,20 @@ export default function LandingPage() {
           </div>
 
           <div className="hidden items-center gap-3 sm:flex">
+            <a
+              href="https://microsoftedge.microsoft.com/addons/detail/hjgbnecdpcalnmmflkmalglnfgbgfpen"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-2 shadow-sm hover:shadow-md"
+              style={{
+                borderColor: 'var(--border-main)',
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <Puzzle size={15} style={{ color: '#0078d4' }} />
+              <span>Download extension on MS Edge</span>
+            </a>
             <button
               type="button"
               onClick={() => navigate('/login-password')}
@@ -119,7 +133,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => navigate('/login-password')}
@@ -141,6 +155,18 @@ export default function LandingPage() {
               >
                 Sign Up
               </button>
+              <a
+                href="https://microsoftedge.microsoft.com/addons/detail/hjgbnecdpcalnmmflkmalglnfgbgfpen"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-semibold text-white shadow-xl transition-all duration-200 hover:-translate-y-0.5"
+                style={{
+                  background: 'linear-gradient(135deg, #0078d4, #00b7c3)',
+                }}
+              >
+                <Puzzle size={18} />
+                <span>Download extension on MS Edge</span>
+              </a>
             </div>
 
             <div className="grid gap-4 pt-2 sm:grid-cols-3">
